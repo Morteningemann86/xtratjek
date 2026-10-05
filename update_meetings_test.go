@@ -187,11 +187,12 @@ func TestScriptDeleteMeetingAsksToConfirm(t *testing.T) {
 	}
 }
 
-// TestScriptEditMeetingNotesCtrlSSavesEscDiscards exercises the in-app
+// TestScriptEditMeetingNotesCtrlSAndEscBothSave exercises the in-app
 // textarea editor that replaced the $EDITOR round trip for Notes/Transcript:
-// "n" opens it seeded from the current value, ctrl+s commits and returns to
-// modeNormal, esc discards without touching the field.
-func TestScriptEditMeetingNotesCtrlSSavesEscDiscards(t *testing.T) {
+// "n" opens it seeded from the current value, and both ctrl+s and esc commit
+// the edit and return to modeNormal — esc must never discard, so a reflex
+// esc can't cost someone a long note.
+func TestScriptEditMeetingNotesCtrlSAndEscBothSave(t *testing.T) {
 	m := modelWithTasks(t)
 	m.tab = tabMeetings
 	m = script(t, m, "a", "1:1 with Alice", "enter")
@@ -220,14 +221,14 @@ func TestScriptEditMeetingNotesCtrlSSavesEscDiscards(t *testing.T) {
 		t.Fatalf("saving Notes touched Transcript: %q", mt.Transcript)
 	}
 
-	// Re-open and discard: esc must leave the saved value untouched, even
-	// though the textarea was edited in between.
+	// Re-open and edit again, this time exiting with esc: it must save just
+	// like ctrl+s did, not discard.
 	m = sendKey(t, m, "n")
 	m = script(t, m, " — more", "esc")
 	if m.mode != modeNormal {
 		t.Fatalf("after esc: mode = %v, want modeNormal", m.mode)
 	}
-	if mt.Notes != "Ask about the Q4 budget" {
-		t.Fatalf("esc should discard the edit, got mt.Notes = %q", mt.Notes)
+	if mt.Notes != "Ask about the Q4 budget — more" {
+		t.Fatalf("esc should save like ctrl+s, got mt.Notes = %q", mt.Notes)
 	}
 }

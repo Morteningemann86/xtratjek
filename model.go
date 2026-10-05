@@ -171,7 +171,8 @@ const (
 	modeEditSuggestion
 	// modeEditMeetingText is the fullscreen textarea for a meeting's Notes or
 	// Transcript (update_meetings.go) — which field is set by
-	// meetingEditField. ctrl+s saves, esc discards; no $EDITOR round trip.
+	// meetingEditField. Both ctrl+s and esc save; esc never discards, so it
+	// can't be used to lose a note by reflex. No $EDITOR round trip.
 	modeEditMeetingText
 )
 

@@ -251,8 +251,8 @@ func (m model) renderSuggestionRow(s meeting.Suggestion, focused bool, w int) []
 
 // meetingEditChromeLines is the fixed chrome renderEditMeetingTextFullscreen
 // wraps the textarea in: a blank line, the heading, a blank line, a blank
-// line, and the save/cancel hint — everything but the textarea itself.
-const meetingEditChromeLines = 5
+// line, and the two key-hint lines — everything but the textarea itself.
+const meetingEditChromeLines = 6
 
 // renderEditMeetingTextFullscreen draws the in-app Notes/Transcript editor —
 // full-screen chrome of its own, like the help and explain overlays, so
@@ -292,7 +292,8 @@ func (m model) renderEditMeetingTextFullscreen() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("  "+tr("ctrl+s to save  ·  esc to cancel")) + "\n")
+	b.WriteString(helpStyle.Render("  "+tr("ctrl+s or esc  save and exit")) + "\n")
+	b.WriteString(helpStyle.Render("  "+tr("alt+←/→ move by word  ·  ctrl+u clear to line start  ·  ctrl+k clear to line end")) + "\n")
 
 	lines := strings.Split(b.String(), "\n")
 	if m.termWidth > 0 {

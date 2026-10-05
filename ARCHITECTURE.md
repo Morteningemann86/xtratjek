@@ -599,9 +599,11 @@ for it from this tab.
   per-field editor — the same syntax typing a task already uses.
 - **Notes and Transcript edit in-app**, not through `$EDITOR`: `n`/`T` seed
   a `bubbles/textarea` (`meetingTextarea`, `modeEditMeetingText`) from the
-  target field, `ctrl+s` saves and `esc` discards — a lighter round trip
-  than the file-based `$EDITOR` flow tasks' notes still use, since a
-  meeting's own text is typically a few lines, not a long description.
+  target field — a lighter round trip than the file-based `$EDITOR` flow
+  tasks' notes still use, since a meeting's own text is typically a few
+  lines, not a long description. Both `ctrl+s` and `esc` save
+  (`saveMeetingTextAndExit`); `esc` deliberately doesn't discard, so reaching
+  for it out of habit can't cost someone a long note.
 - **A recording in progress shows in the status line** (`recordingIndicator`
   in `view_meetings.go`) regardless of which tab is open, the same way the
   running-task timer is always visible — recording keeps going in the

@@ -480,7 +480,7 @@ func (m model) updateEditSuggestion(msg tea.Msg) (tea.Model, tea.Cmd) {
 // startEditMeetingText is "n" (notes) or "T" (transcript) on the Meetings
 // tab: it seeds meetingTextarea from the target meeting's current field,
 // focuses it, and switches to modeEditMeetingText — an in-app multi-line
-// editor (ctrl+s saves, esc discards) rather than a round trip through
+// editor (both ctrl+s and esc save) rather than a round trip through
 // $EDITOR, which felt like a context switch for what's often a one-line note.
 func (m *model) startEditMeetingText(field string) tea.Cmd {
 	mt := m.meetingForEditorTarget()
@@ -499,50 +499,55 @@ func (m *model) startEditMeetingText(field string) tea.Cmd {
 	return m.meetingTextarea.Focus()
 }
 
-// updateEditMeetingText drives modeEditMeetingText: ctrl+s commits the
-// textarea's value into the target field and saves, esc discards, anything
-// else is ordinary textarea editing.
+// updateEditMeetingText drives modeEditMeetingText: both ctrl+s and esc
+// commit the textarea's value into the target field and leave edit mode —
+// esc does not discard, so pressing it by reflex (or to reach for another
+// key) can never lose what was just typed. Anything else is ordinary
+// textarea editing.
 func (m model) updateEditMeetingText(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyMsg); ok {
 		switch key.String() {
-		case "ctrl+s":
-			id, field := m.meetingEditID, m.meetingEditField
-			m.meetingEditID = ""
-			m.meetingEditField = ""
-			m.meetingTextarea.Blur()
-			m.mode = modeNormal
-			if mt := m.meetingByID(id); mt != nil {
-				edited := m.meetingTextarea.Value()
-				changed := false
-				switch field {
-				case "transcript":
-					changed = edited != mt.Transcript
-					mt.Transcript = edited
-				default: // "notes", and the fallback for a stale/empty field value
-					changed = edited != mt.Notes
-					mt.Notes = edited
-				}
-				if changed {
-					if err := saveMeeting(mt); err != nil {
-						m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), err))
-						return m, clearErrAfter()
-					}
-					m.flashSuccess(tr("Saved"))
-					return m, clearErrAfter()
-				}
-			}
-			return m, nil
-		case "esc":
-			m.meetingEditID = ""
-			m.meetingEditField = ""
-			m.meetingTextarea.Blur()
-			m.mode = modeNormal
-			return m, nil
+		case "ctrl+s", "esc":
+			return m.saveMeetingTextAndExit()
 		}
 	}
 	var cmd tea.Cmd
 	m.meetingTextarea, cmd = m.meetingTextarea.Update(msg)
 	return m, cmd
+}
+
+// saveMeetingTextAndExit is the shared body of ctrl+s and esc in
+// modeEditMeetingText: write the textarea's current value into whichever
+// field (Notes or Transcript) is being edited and return to modeNormal.
+func (m model) saveMeetingTextAndExit() (tea.Model, tea.Cmd) {
+	id, field := m.meetingEditID, m.meetingEditField
+	m.meetingEditID = ""
+	m.meetingEditField = ""
+	m.meetingTextarea.Blur()
+	m.mode = modeNormal
+	mt := m.meetingByID(id)
+	if mt == nil {
+		return m, nil
+	}
+	edited := m.meetingTextarea.Value()
+	changed := false
+	switch field {
+	case "transcript":
+		changed = edited != mt.Transcript
+		mt.Transcript = edited
+	default: // "notes", and the fallback for a stale/empty field value
+		changed = edited != mt.Notes
+		mt.Notes = edited
+	}
+	if !changed {
+		return m, nil
+	}
+	if err := saveMeeting(mt); err != nil {
+		m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), err))
+		return m, clearErrAfter()
+	}
+	m.flashSuccess(tr("Saved"))
+	return m, clearErrAfter()
 }
 
 // startEditFocusedSuggestion opens modeEditSuggestion seeded from the
