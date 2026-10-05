@@ -34,13 +34,20 @@ type Meeting struct {
 	Title     string
 	Date      time.Time
 	Attendees []string
-	// AudioPath is the recorded wav file, "" if the meeting has no recording
-	// (typed or pasted notes only).
+	// AudioPath is the recorded wav file, "" if the meeting has no recording.
 	AudioPath string
-	// Transcript is the raw text: typed directly, pasted in, or produced by
-	// the transcription provider from AudioPath.
+	// Notes is the user's own hand-typed writing — distinct from Transcript,
+	// which is machine-produced (or pasted-in) raw material. Both feed the AI
+	// pass (see Input); keeping them apart means a correction or private
+	// aside written in Notes is never silently overwritten by a re-run of
+	// transcription, and the UI can show "what I wrote" next to "what was
+	// said" instead of one field doing both jobs.
+	Notes string
+	// Transcript is produced by the transcription provider from AudioPath —
+	// never hand-typed. A meeting with no recording has an empty Transcript
+	// and runs the AI pass on Notes alone.
 	Transcript string
-	// Summary is the AI-generated summary of Transcript, set once Status
+	// Summary is the AI-generated summary of Input(), set once Status
 	// reaches StatusReady.
 	Summary  string
 	Status   Status
@@ -95,11 +102,29 @@ func (m *Meeting) SetAttendeesText(s string) {
 // user before it can be considered done with.
 func (m Meeting) NeedsReview() bool { return m.Status == StatusReady }
 
-// CanRunAI reports whether there is a transcript to summarize and mine for
+// Input is what the AI pass reads: Notes and Transcript combined under their
+// own headings when both are present, so a hand-typed aside ("ignore the
+// first 5 minutes, that was off-topic") and the machine transcript are both
+// visible to the model rather than one silently winning. Either alone is
+// used as-is.
+func (m Meeting) Input() string {
+	notes := strings.TrimSpace(m.Notes)
+	transcript := strings.TrimSpace(m.Transcript)
+	switch {
+	case notes == "":
+		return transcript
+	case transcript == "":
+		return notes
+	default:
+		return "## My notes\n" + notes + "\n\n## Transcript\n" + transcript
+	}
+}
+
+// CanRunAI reports whether there is anything to summarize and mine for
 // action items. A meeting mid-recording or mid-transcription is not
 // re-enterable: the running step owns the next status transition.
 func (m Meeting) CanRunAI() bool {
-	return strings.TrimSpace(m.Transcript) != "" &&
+	return m.Input() != "" &&
 		m.Status != StatusRecording && m.Status != StatusTranscribing && m.Status != StatusSummarizing
 }
 

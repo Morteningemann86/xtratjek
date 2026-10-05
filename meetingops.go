@@ -117,12 +117,13 @@ func transcribeCmd(meetingID, audioPath string, keys aiprovider.Keys) tea.Cmd {
 	}
 }
 
-// runAIPassCmd summarizes transcript and extracts action items in one
-// round trip (two sequential API calls), reporting both results together —
-// the review screen needs the summary and the suggestions at once, and
-// splitting them into two messages would mean the UI showing a summary with
-// no suggestions yet for no reason a user could act on.
-func runAIPassCmd(meetingID, transcript string, provider string, keys aiprovider.Keys, existingProjects, existingTags []string) tea.Cmd {
+// runAIPassCmd summarizes input (meeting.Meeting.Input() — Notes and
+// Transcript combined) and extracts action items in one round trip (two
+// sequential API calls), reporting both results together — the review
+// screen needs the summary and the suggestions at once, and splitting them
+// into two messages would mean the UI showing a summary with no suggestions
+// yet for no reason a user could act on.
+func runAIPassCmd(meetingID, input string, provider string, keys aiprovider.Keys, existingProjects, existingTags []string) tea.Cmd {
 	return func() tea.Msg {
 		p, err := aiprovider.New(provider, keys)
 		if err != nil {
@@ -130,11 +131,11 @@ func runAIPassCmd(meetingID, transcript string, provider string, keys aiprovider
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), aiRequestTimeout)
 		defer cancel()
-		summary, err := p.Summarize(ctx, transcript)
+		summary, err := p.Summarize(ctx, input)
 		if err != nil {
 			return aiPassDoneMsg{meetingID: meetingID, err: err}
 		}
-		items, err := p.ExtractActionItems(ctx, transcript, summary, existingProjects, existingTags)
+		items, err := p.ExtractActionItems(ctx, input, summary, existingProjects, existingTags)
 		if err != nil {
 			return aiPassDoneMsg{meetingID: meetingID, err: err}
 		}

@@ -62,6 +62,34 @@ func TestCanRunAI(t *testing.T) {
 	}
 }
 
+func TestCanRunAIFromNotesAlone(t *testing.T) {
+	m := Meeting{Status: StatusDraft, Notes: "my own written notes"}
+	if !m.CanRunAI() {
+		t.Error("CanRunAI() = false for a meeting with only Notes, want true")
+	}
+}
+
+func TestInputCombinesNotesAndTranscript(t *testing.T) {
+	cases := []struct {
+		name       string
+		notes      string
+		transcript string
+		want       string
+	}{
+		{"both empty", "", "", ""},
+		{"notes only", "my notes", "", "my notes"},
+		{"transcript only", "", "the transcript", "the transcript"},
+		{"both present", "my notes", "the transcript", "## My notes\nmy notes\n\n## Transcript\nthe transcript"},
+		{"whitespace-only notes treated as empty", "   ", "the transcript", "the transcript"},
+	}
+	for _, c := range cases {
+		m := Meeting{Notes: c.notes, Transcript: c.transcript}
+		if got := m.Input(); got != c.want {
+			t.Errorf("%s: Input() = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
 func TestCanRecord(t *testing.T) {
 	for _, s := range []Status{StatusDraft, StatusReady, StatusReviewed, StatusError} {
 		if !(Meeting{Status: s}).CanRecord() {

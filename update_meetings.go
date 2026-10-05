@@ -82,6 +82,8 @@ func (m model) updateMeetingsDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "g":
 		return m.handleMeetingsRunAI()
 	case "n":
+		return m, m.openEditorForMeetingNotes()
+	case "T":
 		return m, m.openEditorForMeetingTranscript()
 	}
 	return m, nil
@@ -263,7 +265,7 @@ func (m model) handleTranscribeDone(msg transcribeDoneMsg) (tea.Model, tea.Cmd) 
 	if err := saveMeeting(mt); err != nil {
 		m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), err))
 	}
-	return m, runAIPassCmd(mt.ID, mt.Transcript, m.aiProvider, m.aiKeys, m.cache.projectNames, m.getAllTagsSorted())
+	return m, runAIPassCmd(mt.ID, mt.Input(), m.aiProvider, m.aiKeys, m.cache.projectNames, m.getAllTagsSorted())
 }
 
 // ── Generate (summarize + extract) ──────────────────────────────────────────
@@ -280,7 +282,7 @@ func (m model) handleMeetingsRunAI() (tea.Model, tea.Cmd) {
 	}
 	m.flashInfo(tr("Summarizing and looking for action items…"))
 	return m, tea.Batch(clearErrAfter(),
-		runAIPassCmd(mt.ID, mt.Transcript, m.aiProvider, m.aiKeys, m.cache.projectNames, m.getAllTagsSorted()))
+		runAIPassCmd(mt.ID, mt.Input(), m.aiProvider, m.aiKeys, m.cache.projectNames, m.getAllTagsSorted()))
 }
 
 func (m model) handleAIPassDone(msg aiPassDoneMsg) (tea.Model, tea.Cmd) {
@@ -476,15 +478,36 @@ func (m model) updateEditSuggestion(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// openEditorForMeetingTranscript is "n" on the Meetings tab: $EDITOR over the
-// transcript, the same round trip openEditorForNotes uses for task notes
-// (execEditor/handleEditorFinished are shared; see editorMeetingID there).
+// openEditorForMeetingNotes is "n" on the Meetings tab: $EDITOR over the
+// user's own hand-typed Notes — distinct from the machine Transcript, see
+// openEditorForMeetingTranscript.
+func (m *model) openEditorForMeetingNotes() tea.Cmd {
+	mt := m.meetingForEditorTarget()
+	if mt == nil {
+		return nil
+	}
+	return m.openEditorForMeetingField(mt, "notes", mt.Notes)
+}
+
+// openEditorForMeetingTranscript is "T" on the Meetings tab: $EDITOR over the
+// machine-produced Transcript, for correcting a transcription error. Most
+// meetings never need this — it exists for when the recording mis-heard
+// something badly enough to be worth fixing before the AI pass reads it.
 func (m *model) openEditorForMeetingTranscript() tea.Cmd {
 	mt := m.meetingForEditorTarget()
 	if mt == nil {
 		return nil
 	}
-	if err := writeNotesFile(mt.ID, mt.Transcript); err != nil {
+	return m.openEditorForMeetingField(mt, "transcript", mt.Transcript)
+}
+
+// openEditorForMeetingField is the shared body of the two openers above —
+// the same round trip openEditorForNotes uses for task notes
+// (execEditor/handleEditorFinished are shared; see editorMeetingID there).
+// field is "notes" or "transcript"; handleEditorFinished reads it back from
+// editorMeetingField to know which one to write the result into.
+func (m *model) openEditorForMeetingField(mt *meeting.Meeting, field, current string) tea.Cmd {
+	if err := writeNotesFile(mt.ID, current); err != nil {
 		m.flashError(fmt.Sprintf(tr("Error writing transcript file: %v"), err))
 		return clearErrAfter()
 	}
@@ -498,6 +521,7 @@ func (m *model) openEditorForMeetingTranscript() tea.Cmd {
 		return clearErrAfter()
 	}
 	m.editorMeetingID = mt.ID
+	m.editorMeetingField = field
 	return execEditor(editorCmd, mt.ID, false)
 }
 

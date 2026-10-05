@@ -24,6 +24,7 @@ func openTestStore(t *testing.T) *sql.DB {
 func TestSaveAndLoadMeeting(t *testing.T) {
 	h := openTestStore(t)
 	m := meeting.New("Sprint planning")
+	m.Notes = "my own pre-meeting notes"
 	m.Transcript = "we discussed the roadmap"
 	if err := saveMeetingIn(h, &m); err != nil {
 		t.Fatalf("saveMeetingIn: %v", err)
@@ -36,7 +37,8 @@ func TestSaveAndLoadMeeting(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("loadMeetingsIn() = %d meetings, want 1", len(got))
 	}
-	if got[0].ID != m.ID || got[0].Title != "Sprint planning" || got[0].Transcript != m.Transcript {
+	if got[0].ID != m.ID || got[0].Title != "Sprint planning" ||
+		got[0].Notes != m.Notes || got[0].Transcript != m.Transcript {
 		t.Fatalf("loaded meeting = %+v, want to match %+v", got[0], m)
 	}
 }

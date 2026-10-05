@@ -75,7 +75,7 @@ func docSymbols(t *testing.T, path string) []string {
 func sourceText(t *testing.T) string {
 	t.Helper()
 	var b strings.Builder
-	for _, dir := range []string{".", "todo", "tasksync", "paths", "rank"} {
+	for _, dir := range []string{".", "todo", "tasksync", "paths", "rank", "meeting", "aiprovider"} {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			t.Fatalf("read dir %s: %v", dir, err)

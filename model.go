@@ -516,10 +516,13 @@ type model struct {
 	recorder           *AudioRecorder
 	recordingMeetingID string
 	recordStart        time.Time
-	// editorMeetingID is non-"" while $EDITOR holds this meeting's transcript
-	// — the meeting equivalent of editorTaskID, checked first in
+	// editorMeetingID is non-"" while $EDITOR holds one of this meeting's text
+	// fields — the meeting equivalent of editorTaskID, checked first in
 	// handleEditorFinished before it falls through to the todo-notes path.
-	editorMeetingID string
+	// editorMeetingField says which field ("notes" or "transcript"), since
+	// both round-trip through the same mechanism.
+	editorMeetingID    string
+	editorMeetingField string
 }
 
 func initialModel(repo Repository) model {

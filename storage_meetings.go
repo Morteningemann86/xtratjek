@@ -33,15 +33,15 @@ func saveMeeting(m *meeting.Meeting) error {
 func saveMeetingIn(h *sql.DB, m *meeting.Meeting) error {
 	m.Touch()
 	_, err := h.Exec(`INSERT INTO meetings
-		(id, title, date, attendees, audio_path, transcript, summary, status, error_msg, created_at, modified_at, deleted, deleted_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		(id, title, date, attendees, audio_path, notes, transcript, summary, status, error_msg, created_at, modified_at, deleted, deleted_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			title=excluded.title, date=excluded.date, attendees=excluded.attendees,
-			audio_path=excluded.audio_path, transcript=excluded.transcript, summary=excluded.summary,
+			audio_path=excluded.audio_path, notes=excluded.notes, transcript=excluded.transcript, summary=excluded.summary,
 			status=excluded.status, error_msg=excluded.error_msg, modified_at=excluded.modified_at,
 			deleted=excluded.deleted, deleted_at=excluded.deleted_at`,
 		m.ID, m.Title, fmtTime(m.Date), strings.Join(m.Attendees, ","), m.AudioPath,
-		m.Transcript, m.Summary, string(m.Status), m.ErrorMsg,
+		m.Notes, m.Transcript, m.Summary, string(m.Status), m.ErrorMsg,
 		fmtTime(m.CreatedAt), fmtTime(m.ModifiedAt), boolToInt(m.Deleted), fmtTime(m.DeletedAt))
 	return err
 }
@@ -55,7 +55,7 @@ func loadMeetings() ([]meeting.Meeting, error) {
 }
 
 func loadMeetingsIn(h querier) ([]meeting.Meeting, error) {
-	rows, err := h.Query(`SELECT id, title, date, attendees, audio_path, transcript, summary,
+	rows, err := h.Query(`SELECT id, title, date, attendees, audio_path, notes, transcript, summary,
 		status, error_msg, created_at, modified_at
 		FROM meetings WHERE deleted = 0 ORDER BY date DESC`)
 	if err != nil {
@@ -67,7 +67,7 @@ func loadMeetingsIn(h querier) ([]meeting.Meeting, error) {
 	for rows.Next() {
 		var m meeting.Meeting
 		var status, date, attendees, createdAt, modifiedAt string
-		if err := rows.Scan(&m.ID, &m.Title, &date, &attendees, &m.AudioPath, &m.Transcript,
+		if err := rows.Scan(&m.ID, &m.Title, &date, &attendees, &m.AudioPath, &m.Notes, &m.Transcript,
 			&m.Summary, &status, &m.ErrorMsg, &createdAt, &modifiedAt); err != nil {
 			return nil, err
 		}

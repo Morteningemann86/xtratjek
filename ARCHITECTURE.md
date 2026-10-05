@@ -608,8 +608,8 @@ for it from this tab.
   who'd rather not hold both an Anthropic/OpenAI pair could standardize on
   Azure instead. Not a drop-in: Azure's API shape differs from
   api.openai.com's (per-resource URL, `api-version` query param, `api-key`
-  header instead of `Authorization: Bearer`), so this is a new
-  `AzureOpenAIProvider`-shaped implementation, not a settings toggle.
+  header instead of `Authorization: Bearer`), so this needs a new provider
+  implementation shaped for Azure's API, not a settings toggle.
 - **Gemini audio input.** Gemini's `generateContent` accepts audio directly
   (multimodal, not a dedicated ASR endpoint), so a user who wants exactly one
   API key for everything — text and transcription both — could run the whole

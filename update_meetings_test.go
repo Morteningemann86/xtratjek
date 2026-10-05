@@ -16,6 +16,58 @@ import (
 // exercises handleRecordingStopped/handleTranscribeDone/handleAIPassDone
 // without a real ffmpeg or API call.
 
+// TestScriptMeetingNotesAreIndependentOfTranscript asserts the thing that
+// prompted the Notes/Transcript split: a meeting with only hand-typed notes
+// (no recording at all) can still run the AI pass, and writing one field
+// never touches the other. $EDITOR itself isn't driven here — Notes is set
+// directly, the same stand-in handleEditorFinished's own round trip ends
+// with (see TestScriptAddMeetingAndRunReview's Transcript for the existing
+// precedent).
+func TestScriptMeetingNotesAreIndependentOfTranscript(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "1:1 with Alice", "enter")
+	mt := m.meetings[0]
+
+	m = sendKey(t, m, "enter") // open it
+	if m.openMeetingID != mt.ID {
+		t.Fatalf("openMeetingID = %q, want %q", m.openMeetingID, mt.ID)
+	}
+
+	mt.Notes = "Remember to ask about the Q4 budget"
+	if err := saveMeeting(mt); err != nil {
+		t.Fatal(err)
+	}
+	if mt.Transcript != "" {
+		t.Fatalf("writing Notes touched Transcript: %q", mt.Transcript)
+	}
+	if !mt.CanRunAI() {
+		t.Fatal("CanRunAI() = false for a meeting with only Notes (no recording at all)")
+	}
+
+	// "g" from the detail pane must actually reach handleMeetingsRunAI —
+	// this is exactly the path TestScriptAddMeetingAndRunReview's fix
+	// (updateMeetingsDetail) made reachable in the first place.
+	m = sendKey(t, m, "g")
+	if mt.Status != meeting.StatusSummarizing {
+		t.Fatalf("after 'g' on a notes-only meeting: status = %v, want StatusSummarizing", mt.Status)
+	}
+
+	// Now also set a transcript (as if a later recording was transcribed)
+	// and confirm Notes survives untouched.
+	mt.Transcript = "Alice said the budget is already approved."
+	if err := saveMeeting(mt); err != nil {
+		t.Fatal(err)
+	}
+	if mt.Notes != "Remember to ask about the Q4 budget" {
+		t.Fatalf("writing Transcript touched Notes: %q", mt.Notes)
+	}
+	wantInput := "## My notes\nRemember to ask about the Q4 budget\n\n## Transcript\nAlice said the budget is already approved."
+	if got := mt.Input(); got != wantInput {
+		t.Fatalf("Input() = %q, want %q", got, wantInput)
+	}
+}
+
 func TestScriptAddMeetingAndRunReview(t *testing.T) {
 	m := modelWithTasks(t)
 	m.tab = tabMeetings

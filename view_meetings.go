@@ -146,15 +146,42 @@ func (m model) renderMeetingDetail(w int) (string, int) {
 	}
 	writeln("")
 
+	// Three sections, always present and in this order: what I wrote, what
+	// was said, what the AI made of it. Each is its own field on Meeting
+	// (Notes/Transcript/Summary) and its own $EDITOR round trip (n/T) where
+	// editable, so none of the three can overwrite another the way one
+	// shared field used to risk — see meeting.Meeting's field comments.
+	writeln(titleStyle.Render(tr("My notes")) + dimStyle.Render("  ("+effectiveKey("notes", "n")+")"))
+	if mt.Notes != "" {
+		for _, ln := range wrapPlain(mt.Notes, w) {
+			writeln(ln)
+		}
+	} else {
+		writeln(dimStyle.Render(tr("No notes yet.")))
+	}
+	writeln("")
+
+	writeln(titleStyle.Render(tr("Transcript")) + dimStyle.Render("  ("+effectiveKey("edittranscript", "T")+")"))
+	if mt.Transcript != "" {
+		for _, ln := range wrapPlain(mt.Transcript, w) {
+			writeln(ln)
+		}
+	} else {
+		writeln(dimStyle.Render(tr("No transcript yet.")))
+	}
+	writeln("")
+
+	writeln(titleStyle.Render(tr("Summary")))
 	if mt.Summary != "" {
-		writeln(titleStyle.Render(tr("Summary")))
 		for _, ln := range wrapPlain(mt.Summary, w) {
 			writeln(ln)
 		}
-		writeln("")
+	} else {
+		writeln(dimStyle.Render(tr("No summary yet.")))
 	}
 
 	if len(m.meetingSuggestions) > 0 {
+		writeln("")
 		writeln(titleStyle.Render(tr("Action items")))
 		for i, s := range m.meetingSuggestions {
 			focused := i == m.meetingReviewCursor
@@ -165,16 +192,6 @@ func (m model) renderMeetingDetail(w int) (string, int) {
 				writeln(ln)
 			}
 		}
-		writeln("")
-	}
-
-	if mt.Transcript != "" {
-		writeln(titleStyle.Render(tr("Transcript")))
-		for _, ln := range wrapPlain(mt.Transcript, w) {
-			writeln(ln)
-		}
-	} else {
-		writeln(dimStyle.Render(tr("No transcript yet.")))
 	}
 
 	return strings.TrimRight(b.String(), "\n"), selectedLine
