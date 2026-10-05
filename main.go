@@ -29,6 +29,12 @@ func main() {
 		_ = os.Remove(execPath + ".old")
 	}
 
+	// Remove any recording audio left behind by a session that ended
+	// mid-meeting (crash, kill, power loss) — recording state is never
+	// resumed across a restart, so anything still there is debris, not
+	// something to keep.
+	cleanupOrphanedRecordings()
+
 	// An install from before the rename: move its files and its binary to
 	// tjek's names before anything looks for them.
 	adoptFormerName()

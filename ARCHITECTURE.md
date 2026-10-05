@@ -630,9 +630,15 @@ for it from this tab.
   chunk has landed. A chunk that fails to transcribe gets a placeholder
   instead of aborting the whole meeting over one dropped call; a chunk
   that fails to *record* (ffmpeg itself erroring) still ends the meeting
-  in `StatusError`, same as the old single-file pipeline did. Successful
-  chunks delete their own wav file; a failed one is left in place rather
-  than losing that stretch of audio, even though it isn't auto-retried.
+  in `StatusError`, same as the old single-file pipeline did. Every chunk's
+  wav file is deleted once tjek is done with it — transcribed
+  successfully, failed to transcribe, or never attempted (no OpenAI key) —
+  nothing about a meeting's audio is meant to be kept past that point.
+  `cleanupOrphanedRecordings` (called from `main.go`) is the backstop for
+  the one thing that deletion-on-completion can't reach: the process
+  ending before any of it runs. Recording state is never resumed across a
+  restart, so anything still under `<data>/recordings/` at the next
+  startup is debris, not something to keep, and is removed outright.
 - **The detail pane has its own key handler**, `updateMeetingsDetail`,
   parallel to `updateDetail` rather than sharing `updateList`'s switch:
   recording, generating and reviewing only make sense once a meeting is

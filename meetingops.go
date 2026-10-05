@@ -114,6 +114,22 @@ func loadSuggestionsCmd(meetingID string) tea.Cmd {
 
 // ── Recording ────────────────────────────────────────────────────────────────
 
+// cleanupOrphanedRecordings removes everything under <data>/recordings/,
+// called once at startup (main.go). No recording is ever resumed across a
+// restart — model.recorder is in-memory only — so anything still there is
+// debris from a session that ended mid-recording without the normal
+// cleanup running: a crash, a kill, a power loss. The normal paths
+// (transcribeSegmentCmd, handleSegmentClosed) already delete a chunk's
+// file whether transcribing it succeeded or failed; this is the backstop
+// for the one case neither can reach.
+func cleanupOrphanedRecordings() {
+	dataDir, err := paths.Dir(paths.Data)
+	if err != nil {
+		return
+	}
+	_ = os.RemoveAll(filepath.Join(dataDir, "recordings"))
+}
+
 // recordSegmentDuration is how long each recorded chunk runs before it
 // closes and starts transcribing while the next chunk keeps recording,
 // rather than recording the whole meeting as one file and only starting to
@@ -204,15 +220,21 @@ func ffmpegInstallCmd(meetingID, name string, args []string) tea.Cmd {
 
 const aiRequestTimeout = 5 * time.Minute
 
-// transcribeSegmentCmd transcribes one closed chunk and, on success,
-// deletes its audio file — the meeting has (or will have) its text once
-// handleSegmentTranscribed appends it, and the raw audio past that point
-// is just disk space. A failed transcription leaves the file in place
-// rather than losing that stretch of the recording outright, even though
-// it isn't automatically retried (handleSegmentTranscribed inserts a
-// placeholder and keeps the rest of the meeting going).
+// transcribeSegmentCmd transcribes one closed chunk and always deletes its
+// audio file afterward, whether or not transcribing it succeeded — nothing
+// about a meeting's recorded audio is meant to be kept once tjek is done
+// with it, a failed chunk gets a placeholder rather than a retry
+// (handleSegmentTranscribed), and keeping the file around wouldn't change
+// that. cleanupOrphanedRecordings is the backstop for the one case this
+// can't cover: the process ending before this ever runs.
 func transcribeSegmentCmd(meetingID, path string, index int, final bool, keys aiprovider.Keys) tea.Cmd {
 	return func() tea.Msg {
+		// defer, not a call at each return site, so the file is gone on
+		// every exit from here — including NewTranscriber failing before
+		// a request is even made (keys.OpenAI empty; not reachable through
+		// handleSegmentClosed today, which takes the no-key shortcut
+		// before ever calling this, but true regardless of caller).
+		defer os.Remove(path)
 		tr, err := aiprovider.NewTranscriber(keys)
 		if err != nil {
 			return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
@@ -220,11 +242,7 @@ func transcribeSegmentCmd(meetingID, path string, index int, final bool, keys ai
 		ctx, cancel := context.WithTimeout(context.Background(), aiRequestTimeout)
 		defer cancel()
 		text, err := tr.Transcribe(ctx, path)
-		if err != nil {
-			return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
-		}
-		_ = os.Remove(path)
-		return segmentTranscribedMsg{meetingID: meetingID, index: index, text: text, final: final}
+		return segmentTranscribedMsg{meetingID: meetingID, index: index, text: text, final: final, err: err}
 	}
 }
 

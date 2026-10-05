@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -538,5 +539,27 @@ func TestScriptSegmentRolloverWithoutFFmpegSurfacesAnError(t *testing.T) {
 	m = next.(model)
 	if mt.Status != meeting.StatusError {
 		t.Fatalf("Status = %v, want StatusError once the next chunk can't start", mt.Status)
+	}
+}
+
+// TestCleanupOrphanedRecordingsRemovesLeftoverAudio guards the crash-
+// recovery backstop: recording state is never resumed across a restart,
+// so anything still under <data>/recordings/ at the next startup is
+// debris from a session that ended mid-recording without the normal
+// per-chunk cleanup ever running, and must not survive into the next one.
+func TestCleanupOrphanedRecordingsRemovesLeftoverAudio(t *testing.T) {
+	setTestHome(t, t.TempDir())
+	path, err := segmentRecordingPath("some-meeting-id", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("fake audio"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanupOrphanedRecordings()
+
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("leftover recording should be gone, stat err = %v", err)
 	}
 }

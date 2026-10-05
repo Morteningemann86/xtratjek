@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -315,10 +316,15 @@ func (m model) handleFFmpegInstallFinished(msg ffmpegInstallFinishedMsg) (tea.Mo
 // whole recording (final=true). The next chunk is started first, so the
 // gap in the recording is only as long as closing the old process and
 // launching the new one takes, before this hands the chunk that just
-// closed off to be transcribed.
+// closed off to be transcribed. Every exit from this function deletes
+// msg.path one way or another (directly here, or inside
+// transcribeSegmentCmd/handleSegmentTranscribed) — nothing about a
+// meeting's recorded audio is meant to outlive tjek being done with it,
+// success or failure alike.
 func (m model) handleSegmentClosed(msg segmentClosedMsg) (tea.Model, tea.Cmd) {
 	mt := m.meetingByID(msg.meetingID)
 	if mt == nil {
+		_ = os.Remove(msg.path)
 		return m, nil
 	}
 	if msg.err != nil {
@@ -330,6 +336,7 @@ func (m model) handleSegmentClosed(msg segmentClosedMsg) (tea.Model, tea.Cmd) {
 			m.recordingMeetingID = ""
 		}
 		delete(m.segmentPipelines, msg.meetingID)
+		_ = os.Remove(msg.path)
 		m.flashError(fmt.Sprintf(tr("Recording error: %v"), msg.err))
 		return m, clearErrAfter()
 	}
@@ -345,6 +352,7 @@ func (m model) handleSegmentClosed(msg segmentClosedMsg) (tea.Model, tea.Cmd) {
 			m.recorder = nil
 			m.recordingMeetingID = ""
 			delete(m.segmentPipelines, msg.meetingID)
+			_ = os.Remove(msg.path)
 			m.flashError(fmt.Sprintf(tr("Could not continue recording: %v"), err))
 			return m, clearErrAfter()
 		}
@@ -358,6 +366,7 @@ func (m model) handleSegmentClosed(msg segmentClosedMsg) (tea.Model, tea.Cmd) {
 		// the ordering/rollover bookkeeping and lands the meeting on
 		// StatusDraft once the last chunk is in, the same as it would
 		// after a real transcription call, just without one.
+		_ = os.Remove(msg.path)
 		next, cmd := m.handleSegmentTranscribed(segmentTranscribedMsg{meetingID: msg.meetingID, index: msg.index, final: msg.final})
 		m = next.(model)
 		if cmd != nil {
