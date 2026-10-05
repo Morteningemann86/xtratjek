@@ -1157,7 +1157,13 @@ func copyFile(srcPath, dstPath string) error {
 // point it at an httptest server; nothing else reassigns it.
 var releaseAPIBase = "https://api.github.com"
 
-const releaseRepo = "iliorn/tjek"
+// This fork intentionally diverges from upstream (iliorn/tjek) rather than
+// tracking it, so self-update must point at this fork's own releases —
+// pointing it at upstream would offer to overwrite a custom build (Meetings,
+// the ffmpeg checks, …) with the original project's binary. There are no
+// releases here yet; self-update reports "no releases found" until one is
+// tagged, the same as any repo that hasn't cut one.
+const releaseRepo = "Morteningemann86/xtratjek"
 
 // releaseAsset is one downloadable file attached to a release.
 type releaseAsset struct {
