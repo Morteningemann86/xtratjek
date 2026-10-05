@@ -15,7 +15,8 @@ audiences cannot be told different things.
 (Charm). It is a standalone app with its own SQLite storage, **not** a
 Taskwarrior frontend. Beyond tasks it has a calendar/time-tracking view,
 projects (Gantt), tags, a kanban board, a stats dashboard, a CLI, cross-device
-sync, and in-app self-update.
+sync, in-app self-update, and meeting notes with AI-assisted action-item
+extraction.
 
 ## Commands
 
@@ -563,6 +564,64 @@ The kanban tab (tab 5). Its configuration is a `boardConfig` on the model.
   bar, tab cycling, the digit keys and the palette (`tabVisible`), and the
   detail pane's Stage row (`stageFieldVisible`). Tab numbers never renumber;
   they are part of the translated labels (`tr("6 Stats")`).
+
+## Meetings
+
+Tab 8. Meeting notes (typed, pasted, or recorded and transcribed), summarized
+and mined for action items by an LLM, with every proposed item requiring
+explicit accept/reject before it becomes a task — this is the one place in
+tjek that calls a third-party AI API, and it never runs unless the user asks
+for it from this tab.
+
+- **`meeting/`** is the domain package (`Meeting`, `Suggestion`), framework-
+  free like `todo/`. **`aiprovider/`** wraps the external calls: a
+  `TextProvider` (Anthropic, OpenAI or Gemini — summarize + extract action
+  items) and a `TranscriptionProvider` (OpenAI/Whisper only; Anthropic and
+  Gemini have no speech-to-text endpoint, so `NewTranscriber` needs an OpenAI
+  key regardless of which `TextProvider` is configured). Both are real HTTP
+  calls, no SDKs — the same minimal-dependency approach self-update already
+  uses for GitHub's API.
+- **Storage** (`storage_meetings.go`, migration 012) is local-only: meetings
+  and their suggestions have no `tasksync` fold, so unlike todos they never
+  leave the machine they were created on. An accepted suggestion's task
+  carries `MeetingID` back to its source.
+- **Recording** (`audiorecorder.go`) shells out to ffmpeg — 16kHz mono wav,
+  stopped by writing `"q"` to its stdin (the one quit signal ffmpeg honors
+  identically on every OS, unlike process signals on Windows). Linux/macOS
+  get a working default input; Windows has none (DirectShow device names
+  aren't guessable) and needs the Settings → AI override, same as an
+  ALSA-only Linux box.
+- **The detail pane has its own key handler**, `updateMeetingsDetail`,
+  parallel to `updateDetail` rather than sharing `updateList`'s switch:
+  recording, generating and reviewing only make sense once a meeting is
+  open, and `updateList` only runs while `pane == paneList`. Reviewing a
+  suggestion reuses `parseQuickAdd` for edits (`e`) rather than a bespoke
+  per-field editor — the same syntax typing a task already uses.
+
+### Not done yet
+
+- **No CLI verbs.** Recording/review are interactive by nature, but a
+  `tjek meeting add --notes=-` for piping in an existing transcript
+  non-interactively would be a natural, low-risk addition.
+- **Azure OpenAI as a single-key option.** Azure OpenAI hosts both a chat
+  deployment and a Whisper deployment under one resource/API key, so anyone
+  who'd rather not hold both an Anthropic/OpenAI pair could standardize on
+  Azure instead. Not a drop-in: Azure's API shape differs from
+  api.openai.com's (per-resource URL, `api-version` query param, `api-key`
+  header instead of `Authorization: Bearer`), so this is a new
+  `AzureOpenAIProvider`-shaped implementation, not a settings toggle.
+- **Gemini audio input.** Gemini's `generateContent` accepts audio directly
+  (multimodal, not a dedicated ASR endpoint), so a user who wants exactly one
+  API key for everything — text and transcription both — could run the whole
+  feature on Gemini alone. Quality on pure transcription is expected to trail
+  OpenAI's purpose-built Whisper/`gpt-4o-transcribe` models; this is the
+  "fewer keys" option, not the "best transcription" one. Would need
+  `GeminiProvider` to implement `TranscriptionProvider`.
+- **Exhaustive width/fuzz coverage.** The rest of the app has a
+  `smallterm_test.go` sweep (every tab × state × size from 0×0) and property-
+  based fuzzing; Meetings only has the one scripted flow
+  (`TestScriptAddMeetingAndRunReview`) plus whatever the existing suite
+  exercises incidentally (the tab-bar width tests, translation completeness).
 
 ## Terminals
 
