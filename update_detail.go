@@ -141,7 +141,7 @@ func (m model) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.pushUndo("toggle timer", undoIDs...)
 					m.toggleTimer(sub)
 					m.markModified(sub.ID)
-					if !m.timerTickOn && m.anyTimerRunning() {
+					if !m.timerTickOn && m.needsSecondTick() {
 						m.timerTickOn = true
 						return m, timerTick()
 					}

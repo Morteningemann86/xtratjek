@@ -328,3 +328,26 @@ func TestHandleFFmpegInstallFinished(t *testing.T) {
 		t.Fatal("recording must not start when ffmpeg still isn't found after the install")
 	}
 }
+
+// TestNeedsSecondTickIncludesRecording guards the fix for the status line's
+// elapsed time looking frozen and then jumping several seconds at once: it
+// only redraws when something triggers a render, so timerTick's once-a-
+// second loop (model.go) has to keep running while a recording is active,
+// not only while a task timer is. This can't go through the real "r" key —
+// StartRecording needs a real ffmpeg on PATH, which this environment
+// doesn't have (see TestStartRecordingNoFFmpeg) — so it checks the
+// condition directly against a stand-in *AudioRecorder.
+func TestNeedsSecondTickIncludesRecording(t *testing.T) {
+	m := modelWithTasks(t)
+	if m.needsSecondTick() {
+		t.Fatal("needsSecondTick() = true with nothing running")
+	}
+	m.recorder = &AudioRecorder{}
+	if !m.needsSecondTick() {
+		t.Fatal("needsSecondTick() = false while a recording is active, want true")
+	}
+	m.recorder = nil
+	if m.needsSecondTick() {
+		t.Fatal("needsSecondTick() = true after the recording cleared, want false")
+	}
+}

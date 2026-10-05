@@ -232,6 +232,14 @@ func (m model) startRecordingFor(mt *meeting.Meeting) (tea.Model, tea.Cmd) {
 	m.recordingMeetingID = mt.ID
 	m.recordStart = time.Now()
 	m.flashInfo(tr("Recording… press r to stop"))
+	// The status line's elapsed time (recordingIndicator) only redraws when
+	// something triggers a render; without this it sits still and jumps
+	// several seconds at once whenever something else happens to redraw —
+	// see needsSecondTick.
+	if !m.timerTickOn {
+		m.timerTickOn = true
+		return m, tea.Batch(clearErrAfter(), timerTick())
+	}
 	return m, clearErrAfter()
 }
 

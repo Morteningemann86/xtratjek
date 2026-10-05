@@ -1125,6 +1125,16 @@ func (m model) anyTimerRunning() bool {
 	return len(m.runningTimers) > 0
 }
 
+// needsSecondTick reports whether timerTick's once-a-second redraw loop has
+// to keep running — a task timer counting up needs it, and so does a
+// meeting recording: without a steady redraw, the status line's elapsed
+// time (recordingIndicator) only updates whenever some unrelated event
+// happens to trigger one, which looks frozen and then jumps several
+// seconds at once.
+func (m model) needsSecondTick() bool {
+	return m.anyTimerRunning() || m.recorder != nil
+}
+
 // openIdlePrompt switches to the runaway-timer prompt for the task's
 // running entry.
 func (m *model) openIdlePrompt(t *todo.Todo) {

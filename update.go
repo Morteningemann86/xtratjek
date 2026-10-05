@@ -115,6 +115,9 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, timerTick()
 		}
+		if m.recorder != nil {
+			return m, timerTick()
+		}
 		m.timerTickOn = false
 		return m, nil
 	case updateDoneMsg:
@@ -979,7 +982,7 @@ func (m model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.pushUndo("toggle timer", undoIDs...)
 					m.toggleTimer(t)
 					m.markModified(t.ID)
-					if !m.timerTickOn && m.anyTimerRunning() {
+					if !m.timerTickOn && m.needsSecondTick() {
 						m.timerTickOn = true
 						return m, timerTick()
 					}
