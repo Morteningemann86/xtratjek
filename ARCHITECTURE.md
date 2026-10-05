@@ -609,6 +609,30 @@ for it from this tab.
   `handleFFmpegInstallFinished` re-checks `PATH` once it returns (exit 0
   doesn't guarantee ffmpeg actually landed — a declined prompt can exit
   clean) and resumes the same recording automatically if it did.
+- **Recording and transcribing happen in chunks**
+  (`recordSegmentDuration`, 5 minutes), not as one pass over the whole
+  meeting: a continuous recording hits Whisper's 25MB request cap at
+  around 13 minutes of 16kHz mono audio (`aiprovider/openai.go`'s
+  `Transcribe`), and waiting for the whole meeting to end before
+  transcribing any of it is also just a worse experience. Each chunk
+  (`startMeetingSegment`/`closeSegmentCmd`, one wav file per chunk under
+  `<data>/recordings/<meetingID>/`) closes on a `recordSegmentTick`
+  (`handleSegmentClosed`), which starts the next chunk recording
+  *before* handing the one that just closed to `transcribeSegmentCmd` —
+  the gap in the recording is only as long as that handoff takes, not
+  however long transcribing takes. A chunk's transcription can return
+  out of order (a slow call for an earlier chunk isn't guaranteed to beat
+  a later one back), so `handleSegmentTranscribed` holds results in
+  `model.segmentPipelines` (keyed by meeting ID, since a different
+  meeting's recording can start while an older one's tail is still
+  transcribing) and only appends to `Transcript` — visible in the detail
+  pane immediately, not only once the meeting ends — once every earlier
+  chunk has landed. A chunk that fails to transcribe gets a placeholder
+  instead of aborting the whole meeting over one dropped call; a chunk
+  that fails to *record* (ffmpeg itself erroring) still ends the meeting
+  in `StatusError`, same as the old single-file pipeline did. Successful
+  chunks delete their own wav file; a failed one is left in place rather
+  than losing that stretch of audio, even though it isn't auto-retried.
 - **The detail pane has its own key handler**, `updateMeetingsDetail`,
   parallel to `updateDetail` rather than sharing `updateList`'s switch:
   recording, generating and reviewing only make sense once a meeting is
@@ -654,9 +678,16 @@ for it from this tab.
   `GeminiProvider` to implement `TranscriptionProvider`.
 - **Exhaustive width/fuzz coverage.** The rest of the app has a
   `smallterm_test.go` sweep (every tab × state × size from 0×0) and property-
-  based fuzzing; Meetings only has the one scripted flow
-  (`TestScriptAddMeetingAndRunReview`) plus whatever the existing suite
-  exercises incidentally (the tab-bar width tests, translation completeness).
+  based fuzzing; Meetings has a handful of scripted flows
+  (`update_meetings_test.go`) covering the add/record/review pipeline and
+  the chunked-transcription ordering, plus whatever the existing suite
+  exercises incidentally (the tab-bar width tests, translation
+  completeness) — none of it is the exhaustive kind the rest of the app has.
+- **A chunk's happy-path rollover is untested.** `handleSegmentClosed`
+  starting the next chunk's recording needs a real ffmpeg
+  (`TestScriptSegmentRolloverWithoutFFmpegSurfacesAnError` only exercises
+  the "ffmpeg missing" error path); the ordering, no-key, and per-chunk-
+  failure logic that doesn't need a real recording is covered directly.
 
 ## Terminals
 

@@ -519,9 +519,17 @@ type model struct {
 	// recorder is non-nil while a recording is in progress; recordingMeetingID
 	// names which meeting owns it (StartRecording/Stop run outside the model,
 	// so the pointer is the only handle back to the live ffmpeg process).
+	// recordSegmentIndex is which chunk (meetingops.go's recordSegmentDuration)
+	// recorder is currently capturing, restarted at 0 for each new recording.
 	recorder           *AudioRecorder
 	recordingMeetingID string
 	recordStart        time.Time
+	recordSegmentIndex int
+	// segmentPipelines is each meeting's in-flight chunked-transcription
+	// bookkeeping (see segmentPipeline's doc comment for why this is keyed
+	// by meeting ID rather than a couple of bare fields), entries removed
+	// once that meeting's last chunk has been appended.
+	segmentPipelines map[string]*segmentPipeline
 	// pendingFFmpegInstallMeetingID names the meeting "r" was trying to
 	// record when it found ffmpeg missing, while the y/n install prompt
 	// (promptInstallFFmpeg) or the install itself is in flight — so

@@ -351,3 +351,192 @@ func TestNeedsSecondTickIncludesRecording(t *testing.T) {
 		t.Fatal("needsSecondTick() = true after the recording cleared, want false")
 	}
 }
+
+// The remaining tests in this file cover the chunked recording
+// pipeline (meetingops.go): recording and transcribing in
+// recordSegmentDuration-long chunks instead of one pass over the whole
+// meeting. The happy-path rollover itself needs a real ffmpeg to start the
+// next chunk (see TestStartRecordingNoFFmpeg's note on why this
+// environment can't run it); handleSegmentTranscribed's ordering, the
+// no-key shortcut, and the per-chunk-failure placeholder need neither
+// ffmpeg nor a network call, so those are driven directly by delivering
+// the messages the real pipeline would produce — the same technique
+// TestScriptAddMeetingAndRunReview uses for the AI pass.
+
+// TestScriptSegmentsFlushInOrderDespiteArrivingOutOfOrder is the core
+// correctness property of the chunked pipeline: a slow network call for an
+// earlier chunk isn't guaranteed to return before a later one's, and the
+// transcript must still read in recording order regardless.
+func TestScriptSegmentsFlushInOrderDespiteArrivingOutOfOrder(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Weekly sync", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter") // open the detail pane
+	m.aiKeys.OpenAI = "test-key"
+	mt.Status = meeting.StatusRecording
+
+	// Segment 1 finishes before segment 0 does.
+	next, _ := m.Update(segmentTranscribedMsg{meetingID: mt.ID, index: 1, text: "second chunk"})
+	m = next.(model)
+	if mt.Transcript != "" {
+		t.Fatalf("segment 1 landed before segment 0: Transcript = %q", mt.Transcript)
+	}
+
+	next, _ = m.Update(segmentTranscribedMsg{meetingID: mt.ID, index: 0, text: "first chunk"})
+	m = next.(model)
+	if mt.Transcript != "first chunk second chunk" {
+		t.Fatalf("Transcript = %q, want both segments flushed in order", mt.Transcript)
+	}
+	if mt.Status != meeting.StatusRecording {
+		t.Fatalf("Status = %v, want still StatusRecording before the final chunk", mt.Status)
+	}
+
+	// Segment 2, final: completes the recording and kicks off the AI pass —
+	// this is also the part of the pipeline that makes the transcript
+	// "visible as it's transcribed" rather than only once the meeting ends.
+	next, cmd := m.Update(segmentTranscribedMsg{meetingID: mt.ID, index: 2, text: "third chunk", final: true})
+	m = next.(model)
+	if mt.Transcript != "first chunk second chunk third chunk" {
+		t.Fatalf("Transcript = %q after the final segment", mt.Transcript)
+	}
+	if mt.Status != meeting.StatusSummarizing {
+		t.Fatalf("Status = %v, want StatusSummarizing once every segment is in", mt.Status)
+	}
+	if cmd == nil {
+		t.Fatal("the final segment should return the AI-pass command")
+	}
+	if len(m.segmentPipelines) != 0 {
+		t.Fatalf("segmentPipelines = %v, want the finished meeting's entry removed", m.segmentPipelines)
+	}
+}
+
+// TestScriptSegmentTranscriptionFailureInsertsPlaceholderAndContinues
+// covers why a failed chunk doesn't abort the whole meeting: a dropped
+// network call for one five-minute chunk shouldn't cost the rest of an
+// hour-long recording the way a single-file failure used to.
+func TestScriptSegmentTranscriptionFailureInsertsPlaceholderAndContinues(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter")
+	m.aiKeys.OpenAI = "test-key"
+	mt.Status = meeting.StatusRecording
+
+	next, _ := m.Update(segmentTranscribedMsg{meetingID: mt.ID, index: 0, text: "all good", err: errors.New("network blip")})
+	m = next.(model)
+	if !strings.Contains(mt.Transcript, "failed") {
+		t.Fatalf("Transcript = %q, want a placeholder for the failed chunk", mt.Transcript)
+	}
+	if mt.Status == meeting.StatusError {
+		t.Fatal("one failed chunk must not abort the whole meeting")
+	}
+
+	next, _ = m.Update(segmentTranscribedMsg{meetingID: mt.ID, index: 1, text: "second chunk", final: true})
+	m = next.(model)
+	if !strings.Contains(mt.Transcript, "second chunk") {
+		t.Fatalf("Transcript = %q, want the later chunk to still land", mt.Transcript)
+	}
+	if mt.Status != meeting.StatusSummarizing {
+		t.Fatalf("Status = %v, want StatusSummarizing once the recording finishes despite the earlier failure", mt.Status)
+	}
+}
+
+// TestScriptSegmentWithoutOpenAIKeyLandsOnDraft matches the single-file
+// pipeline's behavior for a meeting recorded with no OpenAI key configured:
+// no transcription is attempted, nothing is inserted into Transcript, and
+// the meeting lands on StatusDraft with a hint instead of silently stuck
+// or treated as an error.
+func TestScriptSegmentWithoutOpenAIKeyLandsOnDraft(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter")
+	mt.Status = meeting.StatusRecording
+	// m.aiKeys.OpenAI left empty.
+
+	next, _ := m.Update(segmentTranscribedMsg{meetingID: mt.ID, index: 0, final: true})
+	m = next.(model)
+	if mt.Transcript != "" {
+		t.Fatalf("Transcript = %q, want nothing inserted with no key configured", mt.Transcript)
+	}
+	if mt.Status != meeting.StatusDraft {
+		t.Fatalf("Status = %v, want StatusDraft with no OpenAI key configured", mt.Status)
+	}
+	if !strings.Contains(m.err, "API key") {
+		t.Fatalf("err flash = %q, want it to mention the missing API key", m.err)
+	}
+}
+
+// TestRecordSegmentTickIgnoredOnceRecordingHasStopped guards the stale-tick
+// path: tea.Tick has no cancel handle, so a rollover tick scheduled before
+// "r" stopped the recording can still arrive afterward, and must be a
+// no-op rather than acting on a recorder that's gone.
+func TestRecordSegmentTickIgnoredOnceRecordingHasStopped(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m.recorder = nil // the recording has already fully stopped
+
+	next, cmd := m.Update(recordSegmentTickMsg{})
+	m = next.(model)
+	if cmd != nil {
+		t.Fatal("a stale recordSegmentTick must not schedule a close")
+	}
+	if mt.Status == meeting.StatusError {
+		t.Fatal("a stale tick must not touch the meeting at all")
+	}
+}
+
+// TestScriptSegmentClosedErrorStopsTheRecording covers handleSegmentClosed's
+// own failure path: ffmpeg itself erroring on a chunk (as opposed to a
+// transcription call failing, which handleSegmentTranscribed tolerates)
+// is treated as a real recording failure.
+func TestScriptSegmentClosedErrorStopsTheRecording(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter")
+	m.recorder = &AudioRecorder{}
+	m.recordingMeetingID = mt.ID
+	mt.Status = meeting.StatusRecording
+
+	next, _ := m.Update(segmentClosedMsg{meetingID: mt.ID, index: 0, final: true, err: errors.New("ffmpeg crashed")})
+	m = next.(model)
+	if mt.Status != meeting.StatusError {
+		t.Fatalf("Status = %v, want StatusError", mt.Status)
+	}
+	if m.recorder != nil {
+		t.Fatal("recorder should be cleared after a recording error")
+	}
+}
+
+// TestScriptSegmentRolloverWithoutFFmpegSurfacesAnError exercises
+// handleSegmentClosed's "could not start the next chunk" error path — the
+// happy-path rollover itself needs a real ffmpeg (see
+// TestStartRecordingNoFFmpeg's note), which this environment doesn't have.
+func TestScriptSegmentRolloverWithoutFFmpegSurfacesAnError(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err == nil {
+		t.Skip("ffmpeg is installed in this environment; the not-found rollover path can't be exercised here")
+	}
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter")
+	mt.Status = meeting.StatusRecording
+
+	path, err := segmentRecordingPath(mt.ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, _ := m.Update(segmentClosedMsg{meetingID: mt.ID, index: 0, path: path, final: false})
+	m = next.(model)
+	if mt.Status != meeting.StatusError {
+		t.Fatalf("Status = %v, want StatusError once the next chunk can't start", mt.Status)
+	}
+}

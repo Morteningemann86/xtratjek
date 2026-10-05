@@ -232,12 +232,28 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, clearErrAfter()
 	case editorFinishedMsg:
 		return m.handleEditorFinished(msg)
-	case recordingStoppedMsg:
-		return m.handleRecordingStopped(msg)
+	case segmentClosedMsg:
+		return m.handleSegmentClosed(msg)
+	case segmentTranscribedMsg:
+		return m.handleSegmentTranscribed(msg)
+	case recordSegmentTickMsg:
+		// A stale tick from a recording that has already fully stopped
+		// (m.recorder nil) is simply dropped — handleMeetingsToggleRecord's
+		// final close doesn't try to cancel the pending tea.Tick, since
+		// there's no handle to cancel it with; this guard is what makes
+		// that safe instead of acting on a recorder that's gone.
+		if m.recorder == nil {
+			return m, nil
+		}
+		rec, id, index := m.recorder, m.recordingMeetingID, m.recordSegmentIndex
+		path, err := segmentRecordingPath(id, index)
+		if err != nil {
+			m.flashError(fmt.Sprintf(tr("Error rolling over recording: %v"), err))
+			return m, clearErrAfter()
+		}
+		return m, closeSegmentCmd(rec, id, path, index, false)
 	case ffmpegInstallFinishedMsg:
 		return m.handleFFmpegInstallFinished(msg)
-	case transcribeDoneMsg:
-		return m.handleTranscribeDone(msg)
 	case aiPassDoneMsg:
 		return m.handleAIPassDone(msg)
 	case suggestionsLoadedMsg:

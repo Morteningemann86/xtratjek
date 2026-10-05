@@ -21,17 +21,45 @@ import (
 // accepted meeting.Suggestion into a real task through the same path
 // update_modes.go's quick-add uses. Key handling lives in
 // update_meetings.go; rendering in view_meetings.go.
+//
+// Recording and transcribing run in fixed-length chunks
+// (recordSegmentDuration), not as one pass over the whole meeting: each
+// chunk closes, starts transcribing while the next one begins recording,
+// and lands on the end of the meeting's Transcript as soon as it's back —
+// visible in the detail pane well before the meeting ends, rather than
+// only once it's over. update_meetings.go's handleSegmentClosed and
+// handleSegmentTranscribed are where that handoff and the in-order flush
+// actually happen.
 
 // ── Messages ─────────────────────────────────────────────────────────────────
 
-type recordingStoppedMsg struct {
+// recordSegmentTickMsg fires every recordSegmentDuration while a recording
+// is in progress — handleSegmentClosed below is what actually acts on it,
+// by way of closing the current segment once it does.
+type recordSegmentTickMsg struct{}
+
+// segmentClosedMsg reports one recorded chunk's ffmpeg process finishing —
+// either because recordSegmentDuration elapsed and the next chunk needs to
+// start (final=false), or because "r" asked to stop the whole recording
+// (final=true).
+type segmentClosedMsg struct {
 	meetingID string
+	index     int
+	path      string
+	final     bool
 	err       error
 }
 
-type transcribeDoneMsg struct {
+// segmentTranscribedMsg reports one chunk's transcription finishing.
+// Chunks can finish out of order (a slow network call for an earlier one
+// isn't guaranteed to return before a later one's), so index and final are
+// carried through for handleSegmentTranscribed's ordered flush rather than
+// assuming index 0 arrives first.
+type segmentTranscribedMsg struct {
 	meetingID string
+	index     int
 	text      string
+	final     bool
 	err       error
 }
 
@@ -53,6 +81,28 @@ type ffmpegInstallFinishedMsg struct {
 	err       error
 }
 
+// segmentPipeline is one meeting's in-flight chunked-transcription
+// bookkeeping, held in model.segmentPipelines keyed by meeting ID rather
+// than as bare model fields: a meeting whose recording just stopped can
+// still have chunks transcribing in the background after a different
+// meeting's recording has already started (model.recorder has moved on to
+// the new one), so each meeting's ordering state has to stay separate for
+// that tail to land correctly instead of corrupting whichever meeting is
+// recording now.
+type segmentPipeline struct {
+	// results holds finished chunks' text, keyed by index, for chunks that
+	// arrived before every earlier index did.
+	results map[int]segmentResult
+	// appendCursor is the next index actually due to be appended to the
+	// meeting's Transcript — see handleSegmentTranscribed's flush loop.
+	appendCursor int
+}
+
+type segmentResult struct {
+	text  string
+	final bool
+}
+
 // ── Loading ──────────────────────────────────────────────────────────────────
 
 func loadSuggestionsCmd(meetingID string) tea.Cmd {
@@ -64,26 +114,51 @@ func loadSuggestionsCmd(meetingID string) tea.Cmd {
 
 // ── Recording ────────────────────────────────────────────────────────────────
 
-// recordingPath is where a meeting's audio is kept: <data>/recordings/<id>.wav.
-// A fresh directory per install, created lazily on the first recording.
-func recordingPath(meetingID string) (string, error) {
+// recordSegmentDuration is how long each recorded chunk runs before it
+// closes and starts transcribing while the next chunk keeps recording,
+// rather than recording the whole meeting as one file and only starting to
+// transcribe once it ends. Sized well under Whisper's 25MB request cap
+// (aiprovider/openai.go) at the 16kHz mono rate audiorecorder.go records
+// at (~1.92MB/min, so 5 minutes is ~9.6MB) rather than right up against
+// it, and short enough that a transcript actually starts appearing well
+// before a long meeting is over.
+const recordSegmentDuration = 5 * time.Minute
+
+// recordSegmentTick drives recordSegmentTickMsg once per
+// recordSegmentDuration; handleMeetingsToggleRecord/handleSegmentClosed
+// reschedule it for as long as a recording is in progress and let it lapse
+// once it isn't (the same pattern timerTick uses for the per-second UI
+// tick).
+func recordSegmentTick() tea.Cmd {
+	return tea.Tick(recordSegmentDuration, func(time.Time) tea.Msg {
+		return recordSegmentTickMsg{}
+	})
+}
+
+// segmentRecordingPath is where one chunk's audio is kept while it's being
+// recorded, and afterward too if its transcription fails (a successful one
+// deletes it — transcribeSegmentCmd): <data>/recordings/<meetingID>/seg-
+// <NNN>.wav, a subdirectory per meeting since a long one can have a dozen
+// of these alive or awaiting transcription at once.
+func segmentRecordingPath(meetingID string, index int) (string, error) {
 	dataDir, err := paths.Dir(paths.Data)
 	if err != nil {
 		return "", fmt.Errorf("resolving data directory: %w", err)
 	}
-	dir := filepath.Join(dataDir, "recordings")
+	dir := filepath.Join(dataDir, "recordings", meetingID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, meetingID+".wav"), nil
+	return filepath.Join(dir, fmt.Sprintf("seg-%03d.wav", index)), nil
 }
 
-// startMeetingRecording begins capturing audio for m and updates its status.
-// The caller is responsible for storing the returned *AudioRecorder on the
-// model — StartRecording itself is fast (just launching ffmpeg), so this runs
-// synchronously in the key handler rather than as a tea.Cmd.
-func startMeetingRecording(m *meeting.Meeting, ffmpegInput string) (*AudioRecorder, error) {
-	path, err := recordingPath(m.ID)
+// startMeetingSegment begins capturing audio for one chunk of m's
+// recording and updates its status. The caller is responsible for storing
+// the returned *AudioRecorder on the model — StartRecording itself is fast
+// (just launching ffmpeg), so this runs synchronously in the key handler
+// rather than as a tea.Cmd.
+func startMeetingSegment(m *meeting.Meeting, index int, ffmpegInput string) (*AudioRecorder, error) {
+	path, err := segmentRecordingPath(m.ID, index)
 	if err != nil {
 		return nil, err
 	}
@@ -91,18 +166,22 @@ func startMeetingRecording(m *meeting.Meeting, ffmpegInput string) (*AudioRecord
 	if err != nil {
 		return nil, err
 	}
-	m.AudioPath = path
+	if index == 0 {
+		m.AudioPath = filepath.Dir(path)
+	}
 	m.Status = meeting.StatusRecording
 	m.ErrorMsg = ""
 	return rec, nil
 }
 
-// stopRecordingCmd asks the recorder to finish (blocking up to
-// stopGraceWindow), off the Update loop.
-func stopRecordingCmd(rec *AudioRecorder, meetingID string) tea.Cmd {
+// closeSegmentCmd asks the recorder to finish (blocking up to
+// stopGraceWindow), off the Update loop — used both when "r" stops the
+// whole recording (final=true) and when a chunk's time is up and the next
+// one is about to start (final=false).
+func closeSegmentCmd(rec *AudioRecorder, meetingID, path string, index int, final bool) tea.Cmd {
 	return func() tea.Msg {
 		err := rec.Stop()
-		return recordingStoppedMsg{meetingID: meetingID, err: err}
+		return segmentClosedMsg{meetingID: meetingID, index: index, path: path, final: final, err: err}
 	}
 }
 
@@ -125,16 +204,27 @@ func ffmpegInstallCmd(meetingID, name string, args []string) tea.Cmd {
 
 const aiRequestTimeout = 5 * time.Minute
 
-func transcribeCmd(meetingID, audioPath string, keys aiprovider.Keys) tea.Cmd {
+// transcribeSegmentCmd transcribes one closed chunk and, on success,
+// deletes its audio file — the meeting has (or will have) its text once
+// handleSegmentTranscribed appends it, and the raw audio past that point
+// is just disk space. A failed transcription leaves the file in place
+// rather than losing that stretch of the recording outright, even though
+// it isn't automatically retried (handleSegmentTranscribed inserts a
+// placeholder and keeps the rest of the meeting going).
+func transcribeSegmentCmd(meetingID, path string, index int, final bool, keys aiprovider.Keys) tea.Cmd {
 	return func() tea.Msg {
 		tr, err := aiprovider.NewTranscriber(keys)
 		if err != nil {
-			return transcribeDoneMsg{meetingID: meetingID, err: err}
+			return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), aiRequestTimeout)
 		defer cancel()
-		text, err := tr.Transcribe(ctx, audioPath)
-		return transcribeDoneMsg{meetingID: meetingID, text: text, err: err}
+		text, err := tr.Transcribe(ctx, path)
+		if err != nil {
+			return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
+		}
+		_ = os.Remove(path)
+		return segmentTranscribedMsg{meetingID: meetingID, index: index, text: text, final: final}
 	}
 }
 

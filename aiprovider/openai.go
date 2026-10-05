@@ -160,11 +160,16 @@ type openAITranscriptionResponse struct {
 }
 
 // Transcribe uploads the wav file at audioPath to the Whisper endpoint and
-// returns its text. Whisper caps a single request at 25MB — well above a
-// typical meeting at the 16kHz mono rate audiorecorder.go records at (roughly
-// 115MB/hour, so about 3 hours fits) — a bigger file fails with OpenAI's own
-// "file too large" error, which the caller surfaces as-is rather than this
-// package trying to chunk or re-encode audio.
+// returns its text. Whisper caps a single request at 25MB, which at the
+// 16kHz mono rate audiorecorder.go records at (~1.92MB/min, ~115MB/hour) is
+// only about 13 minutes of audio — comfortably past that cap for any real
+// meeting. That's why meetingops.go records and transcribes in
+// recordSegmentDuration-long chunks rather than one file for the whole
+// meeting: audioPath here is always one chunk, not the whole recording.
+// This package has no chunking or re-encoding logic of its own; a file
+// over the cap (e.g. a transcript requested on an old single-file
+// recording from before chunking existed) just fails with OpenAI's own
+// "file too large" error, surfaced as-is.
 func (p *OpenAIProvider) Transcribe(ctx context.Context, audioPath string) (string, error) {
 	if p.APIKey == "" {
 		return "", ErrNoAPIKey

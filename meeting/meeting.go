@@ -34,7 +34,11 @@ type Meeting struct {
 	Title     string
 	Date      time.Time
 	Attendees []string
-	// AudioPath is the recorded wav file, "" if the meeting has no recording.
+	// AudioPath is the directory holding this meeting's recorded audio, ""
+	// if the meeting has no recording. A recording is kept as one wav file
+	// per chunk (recordSegmentDuration in meetingops.go) rather than one
+	// file for the whole meeting, each deleted once it transcribes
+	// successfully — so this names where they live, not a single file.
 	AudioPath string
 	// Notes is the user's own hand-typed writing — distinct from Transcript,
 	// which is machine-produced (or pasted-in) raw material. Both feed the AI

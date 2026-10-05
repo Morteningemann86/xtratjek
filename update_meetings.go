@@ -196,14 +196,19 @@ func (m model) updateAddMeeting(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) handleMeetingsToggleRecord() (tea.Model, tea.Cmd) {
 	if m.recorder != nil {
-		rec, id := m.recorder, m.recordingMeetingID
+		rec, id, index := m.recorder, m.recordingMeetingID, m.recordSegmentIndex
 		m.recorder = nil
 		m.recordingMeetingID = ""
+		path, err := segmentRecordingPath(id, index)
+		if err != nil {
+			m.flashError(fmt.Sprintf(tr("Error stopping recording: %v"), err))
+			return m, clearErrAfter()
+		}
 		if mt := m.meetingByID(id); mt != nil {
 			mt.Status = meeting.StatusTranscribing
 		}
 		m.flashInfo(tr("Stopping recording…"))
-		return m, tea.Batch(clearErrAfter(), stopRecordingCmd(rec, id))
+		return m, tea.Batch(clearErrAfter(), closeSegmentCmd(rec, id, path, index, true))
 	}
 	mt := m.meetingForEditorTarget()
 	if mt == nil || !mt.CanRecord() {
@@ -215,12 +220,12 @@ func (m model) handleMeetingsToggleRecord() (tea.Model, tea.Cmd) {
 	return m.startRecordingFor(mt)
 }
 
-// startRecordingFor actually launches ffmpeg for mt. Split out of
-// handleMeetingsToggleRecord so handleFFmpegInstallFinished can resume the
-// same "r" press automatically once an install it triggered succeeds,
-// without the user needing to press r a second time.
+// startRecordingFor launches the first chunk of a new recording for mt.
+// Split out of handleMeetingsToggleRecord so handleFFmpegInstallFinished
+// can resume the same "r" press automatically once an install it triggered
+// succeeds, without the user needing to press r a second time.
 func (m model) startRecordingFor(mt *meeting.Meeting) (tea.Model, tea.Cmd) {
-	rec, err := startMeetingRecording(mt, m.ffmpegInput)
+	rec, err := startMeetingSegment(mt, 0, m.ffmpegInput)
 	if err != nil {
 		m.flashError(fmt.Sprintf(tr("Could not start recording: %v"), err))
 		return m, clearErrAfter()
@@ -231,16 +236,22 @@ func (m model) startRecordingFor(mt *meeting.Meeting) (tea.Model, tea.Cmd) {
 	m.recorder = rec
 	m.recordingMeetingID = mt.ID
 	m.recordStart = time.Now()
+	m.recordSegmentIndex = 0
+	if m.segmentPipelines == nil {
+		m.segmentPipelines = map[string]*segmentPipeline{}
+	}
+	m.segmentPipelines[mt.ID] = &segmentPipeline{}
 	m.flashInfo(tr("Recording… press r to stop"))
+	cmds := []tea.Cmd{clearErrAfter(), recordSegmentTick()}
 	// The status line's elapsed time (recordingIndicator) only redraws when
 	// something triggers a render; without this it sits still and jumps
 	// several seconds at once whenever something else happens to redraw —
 	// see needsSecondTick.
 	if !m.timerTickOn {
 		m.timerTickOn = true
-		return m, tea.Batch(clearErrAfter(), timerTick())
+		cmds = append(cmds, timerTick())
 	}
-	return m, clearErrAfter()
+	return m, tea.Batch(cmds...)
 }
 
 // promptInstallFFmpeg is reached when "r" finds ffmpeg missing. tjek can run
@@ -298,7 +309,14 @@ func (m model) handleFFmpegInstallFinished(msg ffmpegInstallFinishedMsg) (tea.Mo
 	return m.startRecordingFor(mt)
 }
 
-func (m model) handleRecordingStopped(msg recordingStoppedMsg) (tea.Model, tea.Cmd) {
+// handleSegmentClosed reacts to one recorded chunk's ffmpeg process
+// finishing — either because recordSegmentDuration elapsed and the next
+// chunk needs to start (final=false), or because "r" asked to stop the
+// whole recording (final=true). The next chunk is started first, so the
+// gap in the recording is only as long as closing the old process and
+// launching the new one takes, before this hands the chunk that just
+// closed off to be transcribed.
+func (m model) handleSegmentClosed(msg segmentClosedMsg) (tea.Model, tea.Cmd) {
 	mt := m.meetingByID(msg.meetingID)
 	if mt == nil {
 		return m, nil
@@ -307,39 +325,125 @@ func (m model) handleRecordingStopped(msg recordingStoppedMsg) (tea.Model, tea.C
 		mt.Status = meeting.StatusError
 		mt.ErrorMsg = msg.err.Error()
 		_ = saveMeeting(mt)
+		if m.recordingMeetingID == msg.meetingID {
+			m.recorder = nil
+			m.recordingMeetingID = ""
+		}
+		delete(m.segmentPipelines, msg.meetingID)
 		m.flashError(fmt.Sprintf(tr("Recording error: %v"), msg.err))
 		return m, clearErrAfter()
 	}
+
+	var cmds []tea.Cmd
+	if !msg.final {
+		nextIndex := msg.index + 1
+		rec, err := startMeetingSegment(mt, nextIndex, m.ffmpegInput)
+		if err != nil {
+			mt.Status = meeting.StatusError
+			mt.ErrorMsg = err.Error()
+			_ = saveMeeting(mt)
+			m.recorder = nil
+			m.recordingMeetingID = ""
+			delete(m.segmentPipelines, msg.meetingID)
+			m.flashError(fmt.Sprintf(tr("Could not continue recording: %v"), err))
+			return m, clearErrAfter()
+		}
+		m.recorder = rec
+		m.recordSegmentIndex = nextIndex
+		cmds = append(cmds, recordSegmentTick())
+	}
+
+	if m.aiKeys.OpenAI == "" {
+		// Nothing to transcribe with — handleSegmentTranscribed still does
+		// the ordering/rollover bookkeeping and lands the meeting on
+		// StatusDraft once the last chunk is in, the same as it would
+		// after a real transcription call, just without one.
+		next, cmd := m.handleSegmentTranscribed(segmentTranscribedMsg{meetingID: msg.meetingID, index: msg.index, final: msg.final})
+		m = next.(model)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+	}
+	cmds = append(cmds, transcribeSegmentCmd(msg.meetingID, msg.path, msg.index, msg.final, m.aiKeys))
+	return m, tea.Batch(cmds...)
+}
+
+// handleSegmentTranscribed records one chunk's transcribed text — or a
+// placeholder if transcribing it failed, since a dropped network call
+// shouldn't cost the rest of a long meeting — and flushes every chunk
+// that's now ready in order, so chunks finishing out of turn still produce
+// an in-order transcript instead of racing each other onto the end of it.
+// Once the final chunk flushes, the meeting moves on exactly the way it
+// would have after one single-shot transcription: StatusDraft with no
+// OpenAI key configured, otherwise straight into the AI pass.
+func (m model) handleSegmentTranscribed(msg segmentTranscribedMsg) (tea.Model, tea.Cmd) {
+	mt := m.meetingByID(msg.meetingID)
+	if mt == nil {
+		return m, nil
+	}
+
+	text := msg.text
+	if msg.err != nil {
+		text = tr("[transcription failed for this part]")
+		m.flashError(fmt.Sprintf(tr("A chunk failed to transcribe: %v"), msg.err))
+	}
+
+	if m.segmentPipelines == nil {
+		m.segmentPipelines = map[string]*segmentPipeline{}
+	}
+	pipeline := m.segmentPipelines[msg.meetingID]
+	if pipeline == nil {
+		pipeline = &segmentPipeline{}
+		m.segmentPipelines[msg.meetingID] = pipeline
+	}
+	if pipeline.results == nil {
+		pipeline.results = map[int]segmentResult{}
+	}
+	pipeline.results[msg.index] = segmentResult{text: text, final: msg.final}
+
+	finished := false
+	for {
+		res, ok := pipeline.results[pipeline.appendCursor]
+		if !ok {
+			break
+		}
+		if trimmed := strings.TrimSpace(res.text); trimmed != "" {
+			if mt.Transcript == "" {
+				mt.Transcript = trimmed
+			} else {
+				mt.Transcript = mt.Transcript + " " + trimmed
+			}
+		}
+		delete(pipeline.results, pipeline.appendCursor)
+		pipeline.appendCursor++
+		if res.final {
+			finished = true
+			break
+		}
+	}
+
 	if err := saveMeeting(mt); err != nil {
 		m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), err))
 	}
+	if !finished {
+		return m, clearErrAfter()
+	}
+	delete(m.segmentPipelines, msg.meetingID)
+
 	if m.aiKeys.OpenAI == "" {
 		mt.Status = meeting.StatusDraft
 		_ = saveMeeting(mt)
 		m.flashInfo(tr("Recording saved. Add an OpenAI API key in Settings to transcribe it, or press n to type notes."))
 		return m, clearErrAfter()
 	}
-	return m, transcribeCmd(mt.ID, mt.AudioPath, m.aiKeys)
-}
-
-func (m model) handleTranscribeDone(msg transcribeDoneMsg) (tea.Model, tea.Cmd) {
-	mt := m.meetingByID(msg.meetingID)
-	if mt == nil {
-		return m, nil
-	}
-	if msg.err != nil {
-		mt.Status = meeting.StatusError
-		mt.ErrorMsg = msg.err.Error()
-		_ = saveMeeting(mt)
-		m.flashError(fmt.Sprintf(tr("Transcription failed: %v"), msg.err))
-		return m, clearErrAfter()
-	}
-	mt.Transcript = msg.text
 	mt.Status = meeting.StatusSummarizing
+	mt.ErrorMsg = ""
 	if err := saveMeeting(mt); err != nil {
 		m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), err))
 	}
-	return m, runAIPassCmd(mt.ID, mt.Input(), m.aiProvider, m.aiKeys, m.cache.projectNames, m.getAllTagsSorted())
+	return m, tea.Batch(clearErrAfter(),
+		runAIPassCmd(mt.ID, mt.Input(), m.aiProvider, m.aiKeys, m.cache.projectNames, m.getAllTagsSorted()))
 }
 
 // ── Generate (summarize + extract) ──────────────────────────────────────────
@@ -490,6 +594,7 @@ func (m *model) confirmDeleteMeeting() tea.Cmd {
 	if m.cursor >= len(m.meetings) && m.cursor > 0 {
 		m.cursor--
 	}
+	delete(m.segmentPipelines, id)
 	return nil
 }
 
