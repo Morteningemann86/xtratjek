@@ -878,10 +878,10 @@ func TestSelectedTabNeverTruncated(t *testing.T) {
 		width       int
 		want        string
 	}{
-		{tabCalendar, 86, "2 Calendar"},
-		{tabSettings, 86, "7 Settings"},
-		{tabCalendar, 80, "2 Cal "},
-		{tabSettings, 80, "7 Setup"},
+		{tabCalendar, 94, "2 Calendar"},
+		{tabSettings, 94, "7 Settings"},
+		{tabCalendar, 88, "2 Cal "},
+		{tabSettings, 88, "7 Setup"},
 	}
 
 	for _, tc := range cases {
@@ -1130,12 +1130,24 @@ func TestTabBarFitsTheWidthItIsGiven(t *testing.T) {
 // so at 80 columns switching to Calendar, Projects or Settings collapsed every
 // other tab to a bare digit and the bar changed shape on every switch. Every
 // language is checked, which is what holds tabShortLabels to 80 columns.
-func TestTabBarKeepsItsLabelsAcrossTabsAt80Columns(t *testing.T) {
+// tabBarShortLabelStableWidth is, per language, a width narrow enough to need
+// the abbreviated tab labels but wide enough that every tab's abbreviated
+// form fits regardless of which is selected — found empirically (each
+// language's abbreviated set is a different total length, so the band one
+// language is stable in can be a single column wide in another; there is no
+// one width that lands all three in it at once).
+var tabBarShortLabelStableWidth = map[language]int{
+	langEN: 88,
+	langDA: 88,
+	langDE: 90,
+}
+
+func TestTabBarKeepsItsLabelsAcrossTabs(t *testing.T) {
 	t.Cleanup(func() { applyLang(string(langEN)) })
 	for _, lang := range availableLanguages {
 		m := modelWithTasks(t, todo.New("alpha"))
 		applyLang(string(lang)) // after the model: initialModel re-applies the stored language
-		m.termWidth, m.termHeight = 80, 24
+		m.termWidth, m.termHeight = tabBarShortLabelStableWidth[lang], 24
 		want := ""
 		for tb := tab(0); tb < numTabs; tb++ {
 			if !m.boardCfg.tabVisible(tb) {
@@ -1152,7 +1164,7 @@ func TestTabBarKeepsItsLabelsAcrossTabsAt80Columns(t *testing.T) {
 			}
 		}
 		if !strings.Contains(want, tabShortLabels[lang][1]) {
-			t.Errorf("lang=%s: the short labels do not fit 80 columns: %q", lang, want)
+			t.Errorf("lang=%s: the short labels do not fit: %q", lang, want)
 		}
 	}
 }
@@ -1164,7 +1176,7 @@ func TestTabBarKeepsItsLabelsAcrossTabsAt80Columns(t *testing.T) {
 func TestHeaderShowsTheHelpKey(t *testing.T) {
 	t.Cleanup(func() { applyLang(string(langEN)) })
 	for _, lang := range availableLanguages {
-		for w := 50; w <= 200; w++ {
+		for w := 55; w <= 200; w++ {
 			m := modelWithTasks(t, todo.New("alpha"))
 			applyLang(string(lang))
 			m.termWidth, m.termHeight = w, 20

@@ -139,6 +139,7 @@ var (
 	tabStatsActiveStyle    lipgloss.Style
 	tabCalendarActiveStyle lipgloss.Style
 	tabSettingsActiveStyle lipgloss.Style
+	tabMeetingsActiveStyle lipgloss.Style
 
 	tabTasksInactiveStyle    lipgloss.Style
 	tabProjectsInactiveStyle lipgloss.Style
@@ -147,6 +148,7 @@ var (
 	tabStatsInactiveStyle    lipgloss.Style
 	tabCalendarInactiveStyle lipgloss.Style
 	tabSettingsInactiveStyle lipgloss.Style
+	tabMeetingsInactiveStyle lipgloss.Style
 
 	selectedStyle   lipgloss.Style
 	normalStyle     lipgloss.Style
@@ -242,6 +244,7 @@ func applyTheme(t theme) {
 	tabStatsActiveStyle = activeTab(t.blue)
 	tabCalendarActiveStyle = activeTab(t.teal)
 	tabSettingsActiveStyle = activeTab(t.accent)
+	tabMeetingsActiveStyle = activeTab(t.red)
 
 	tabTasksInactiveStyle = inactiveTab(t.green)
 	tabProjectsInactiveStyle = inactiveTab(t.orange)
@@ -250,6 +253,7 @@ func applyTheme(t theme) {
 	tabStatsInactiveStyle = inactiveTab(t.blue)
 	tabCalendarInactiveStyle = inactiveTab(t.teal)
 	tabSettingsInactiveStyle = inactiveTab(t.accent)
+	tabMeetingsInactiveStyle = inactiveTab(t.red)
 
 	selectedStyle = lipgloss.NewStyle().Foreground(t.green).Bold(true)
 	normalStyle = lipgloss.NewStyle().Foreground(t.fg)

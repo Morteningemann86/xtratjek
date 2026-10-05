@@ -32,12 +32,17 @@ const (
 	// distinct context.
 	ctxTagDrill
 	ctxProjectDrill
+	// The Meetings tab's own list/detail split, parallel to
+	// ctxTasksList/ctxTasksDetail — the detail pane is where recording,
+	// generating and reviewing action items happen.
+	ctxMeetingsList
+	ctxMeetingsDetail
 
 	// ctxAll marks the global bindings (navigation, help, undo, quit) that are
 	// live in every context.
 	ctxAll = ctxTasksList | ctxTasksDetail | ctxProjects | ctxTags |
 		ctxStats | ctxCalendar | ctxCalendarTimeline | ctxSettings |
-		ctxBoard | ctxTagDrill | ctxProjectDrill
+		ctxBoard | ctxTagDrill | ctxProjectDrill | ctxMeetingsList | ctxMeetingsDetail
 
 	// ctxDrill is the pair of drill-in lists, which share their whole keyset.
 	ctxDrill = ctxTagDrill | ctxProjectDrill
@@ -58,7 +63,7 @@ type binding struct {
 // these. Navigation and App collect the global bindings.
 var helpSectionOrder = []string{
 	secNavigation, secTasks, secDetail, secTagsProjects,
-	secBoard, secCalendar, secStats, secSettings, secApp,
+	secBoard, secCalendar, secStats, secSettings, secMeetings, secApp,
 }
 
 const (
@@ -71,6 +76,7 @@ const (
 	secCalendar     = "Calendar"
 	secStats        = "Stats"
 	secSettings     = "Settings"
+	secMeetings     = "Meetings"
 	secApp          = "App"
 )
 
@@ -88,7 +94,7 @@ var keymap = []binding{
 	// enter has no global meaning — each context defines its own (open details,
 	// edit field, activate, cycle) — so it is registered per context, not here.
 	{ctxAll, "esc", "back", "go back", secNavigation, false, false},
-	{ctxAll, "tab / shift+tab / 1-7", "tabs", "switch tabs (forward / back / direct)", secNavigation, false, false},
+	{ctxAll, "tab / shift+tab / 1-8", "tabs", "switch tabs (forward / back / direct)", secNavigation, false, false},
 	{ctxAll, "?", "help", "toggle this help", secNavigation, false, false},
 	{ctxAll, "ctrl+k", "palette", "command palette: find any action by name", secNavigation, false, false},
 
@@ -179,6 +185,21 @@ var keymap = []binding{
 	{ctxSettings, "enter", "setapply", "activate / edit the selected setting", secSettings, true, false},
 	{ctxSettings, "y / n", "confirmupdate", "confirm update when one is offered", secSettings, false, false},
 
+	// ── Meetings ─────────────────────────────────────────────────────────
+	{ctxMeetingsList, "enter", "detail", "open meeting", secMeetings, true, true},
+	{ctxMeetingsList, "a", "add", "add meeting", secMeetings, true, true},
+	{ctxMeetingsList, "r", "record", "start/stop recording", secMeetings, true, true},
+	{ctxMeetingsList, "n", "notes", "edit transcript (opens $EDITOR)", secMeetings, false, false},
+	{ctxMeetingsList, "g", "generate", "summarize + find action items", secMeetings, true, false},
+	{ctxMeetingsList, "x", "delete", "delete meeting", secMeetings, false, false},
+	{ctxMeetingsDetail, "r", "record", "start/stop recording", secMeetings, true, true},
+	{ctxMeetingsDetail, "n", "notes", "edit transcript (opens $EDITOR)", secMeetings, false, false},
+	{ctxMeetingsDetail, "g", "generate", "summarize + find action items", secMeetings, true, false},
+	{ctxMeetingsDetail, "↑/↓ · j/k", "navigate", "move between action items", secMeetings, false, false},
+	{ctxMeetingsDetail, "y", "accept", "accept the focused action item → creates a task", secMeetings, true, true},
+	{ctxMeetingsDetail, "x", "delete", "reject the focused action item", secMeetings, true, true},
+	{ctxMeetingsDetail, "e", "editsuggestion", "edit the focused action item (quick-add syntax)", secMeetings, false, false},
+
 	// ── App (global) ─────────────────────────────────────────────────────
 	{ctxAll, "u", "undo", "undo last change", secApp, false, false},
 	{ctxAll, "q", "quit", "quit", secApp, false, false},
@@ -214,6 +235,11 @@ func (m model) currentKeyCtx() keyCtx {
 		return ctxSettings
 	case tabBoard:
 		return ctxBoard
+	case tabMeetings:
+		if m.pane == paneDetail {
+			return ctxMeetingsDetail
+		}
+		return ctxMeetingsList
 	}
 	return ctxTasksList
 }

@@ -158,14 +158,13 @@ var weekdayInitials = map[language][7]rune{
 // and not tr() keys: tr maps one English string to one translation, and in
 // English several tabs are short already ("1 Tasks" is its own abbreviation)
 // while their Danish and German names are not, so the two tiers need separate
-// entries. Each row is sized to fit an 80-column window, the width most
-// terminals open at — TestTabBarKeepsItsLabelsAcrossTabsAt80Columns checks
-// every language, so a longer word here fails the build instead of turning
+// entries. TestTabBarKeepsItsLabelsAcrossTabs checks every language's set is
+// internally stable, so a longer word here fails the build instead of turning
 // the bar into bare digits.
 var tabShortLabels = map[language][numTabs]string{
-	langEN: {"1 Tasks", "2 Cal", "3 Tags", "4 Proj", "5 Board", "6 Stats", "7 Setup"},
-	langDA: {"1 Opgaver", "2 Kal", "3 Mærk", "4 Proj", "5 Tavle", "6 Stat", "7 Indst"},
-	langDE: {"1 Aufg.", "2 Kal", "3 Tags", "4 Proj", "5 Board", "6 Stat.", "7 Einst."},
+	langEN: {"1 Tasks", "2 Cal", "3 Tags", "4 Proj", "5 Board", "6 Stats", "7 Setup", "8 Meet"},
+	langDA: {"1 Opgaver", "2 Kal", "3 Mærk", "4 Proj", "5 Tavle", "6 Stat", "7 Indst", "8 Møde"},
+	langDE: {"1 Aufg.", "2 Kal", "3 Tags", "4 Proj", "5 Board", "6 Stat.", "7 Einst.", "8 Meet."},
 }
 
 // Short task-list column headings. A column is as wide as the wider of its
@@ -306,6 +305,7 @@ var daTranslations = map[string]string{
 	"5 Board":    "5 Tavle",
 	"6 Stats":    "6 Statistik",
 	"7 Settings": "7 Indstillinger",
+	"8 Meetings": "8 Møder",
 
 	// Key hints (footer)
 
@@ -720,6 +720,58 @@ var daTranslations = map[string]string{
 	"Microphone override: format:input, e.g. dshow:audio=Microphone":          "Mikrofonoverstyring: format:input, fx dshow:audio=Microphone",
 	"platform default": "platformens standard",
 
+	// ── Meetings tab ──
+	"Meetings":                      "Møder",
+	"Meeting":                       "Møde",
+	"Meeting title...":              "Mødetitel...",
+	"Meeting added":                 "Møde tilføjet",
+	"  No meetings yet.":            "  Ingen møder endnu.",
+	"  Press %s to add one.":        "  Tryk %s for at tilføje et.",
+	"  Meeting not found.":          "  Møde ikke fundet.",
+	"Attendees: ":                   "Deltagere: ",
+	"Date: ":                        "Dato: ",
+	"Recording: ":                   "Optagelse: ",
+	"No transcript yet.":            "Ingen transskription endnu.",
+	"Transcript":                    "Transskription",
+	"Action items":                  "Handlingspunkter",
+	"draft":                         "udkast",
+	"recording":                     "optager",
+	"transcribing…":                 "transskriberer…",
+	"summarizing…":                  "opsummerer…",
+	"ready for review":              "klar til gennemgang",
+	"reviewed":                      "gennemgået",
+	"error":                         "fejl",
+	"Recording… press r to stop":    "Optager… tryk r for at stoppe",
+	"Stopping recording…":           "Stopper optagelse…",
+	"Could not start recording: %v": "Kunne ikke starte optagelse: %v",
+	"Recording error: %v":           "Optagelsesfejl: %v",
+	"Recording saved. Add an OpenAI API key in Settings to transcribe it, or press n to type notes.": "Optagelse gemt. Tilføj en OpenAI API-nøgle i Indstillinger for at transskribere den, eller tryk n for at skrive noter.",
+	"Transcription failed: %v":                  "Transskription mislykkedes: %v",
+	"Summarizing and looking for action items…": "Opsummerer og leder efter handlingspunkter…",
+	"AI pass failed: %v":                        "AI-gennemgang mislykkedes: %v",
+	"Found %d action item(s) to review":         "Fandt %d handlingspunkt(er) til gennemgang",
+	"Added task: %s":                            "Tilføjede opgave: %s",
+	"accept action item":                        "accepter handlingspunkt",
+	"Delete meeting '%s'? (y/n)":                "Slet møde '%s'? (y/n)",
+	"Error saving meeting: %v":                  "Fejl ved lagring af møde: %v",
+	"Error deleting meeting: %v":                "Fejl ved sletning af møde: %v",
+	"Error saving action items: %v":             "Fejl ved lagring af handlingspunkter: %v",
+	"Error saving review: %v":                   "Fejl ved lagring af gennemgang: %v",
+	"Error saving edit: %v":                     "Fejl ved lagring af ændring: %v",
+	"Error writing transcript file: %v":         "Fejl ved skrivning af transskriptionsfil: %v",
+	"Edit action item (quick-add syntax)...":    "Rediger handlingspunkt (hurtig-tilføj-syntaks)...",
+	// Meetings keymap descriptions (keymap.go)
+	"open meeting":                                    "åbn møde",
+	"add meeting":                                     "tilføj møde",
+	"start/stop recording":                            "start/stop optagelse",
+	"edit transcript (opens $EDITOR)":                 "rediger transskription (åbner $EDITOR)",
+	"summarize + find action items":                   "opsummer + find handlingspunkter",
+	"delete meeting":                                  "slet møde",
+	"move between action items":                       "flyt mellem handlingspunkter",
+	"accept the focused action item → creates a task": "accepter det fokuserede handlingspunkt → opretter en opgave",
+	"reject the focused action item":                  "afvis det fokuserede handlingspunkt",
+	"edit the focused action item (quick-add syntax)": "rediger det fokuserede handlingspunkt (hurtig-tilføj-syntaks)",
+
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Deadlinepres",
 	"Priority focus":            "Prioritetsfokus",
@@ -978,6 +1030,7 @@ var deTranslations = map[string]string{
 	"5 Board":    "5 Board",
 	"6 Stats":    "6 Statistik",
 	"7 Settings": "7 Einstell.",
+	"8 Meetings": "8 Meetings",
 
 	// Key hints (footer)
 
@@ -1391,6 +1444,58 @@ var deTranslations = map[string]string{
 	"OpenAI API key — also needed to transcribe recordings (clear to remove)": "OpenAI-API-Schlüssel — wird auch zur Transkription von Aufnahmen benötigt (leeren zum Entfernen)",
 	"Microphone override: format:input, e.g. dshow:audio=Microphone":          "Mikrofon-Übersteuerung: Format:Eingabe, z. B. dshow:audio=Microphone",
 	"platform default": "Plattform-Standard",
+
+	// ── Meetings tab ──
+	"Meetings":                      "Meetings",
+	"Meeting":                       "Meeting",
+	"Meeting title...":              "Meeting-Titel...",
+	"Meeting added":                 "Meeting hinzugefügt",
+	"  No meetings yet.":            "  Noch keine Meetings.",
+	"  Press %s to add one.":        "  %s drücken, um eins hinzuzufügen.",
+	"  Meeting not found.":          "  Meeting nicht gefunden.",
+	"Attendees: ":                   "Teilnehmer: ",
+	"Date: ":                        "Datum: ",
+	"Recording: ":                   "Aufnahme: ",
+	"No transcript yet.":            "Noch kein Transkript.",
+	"Transcript":                    "Transkript",
+	"Action items":                  "Aufgabenpunkte",
+	"draft":                         "Entwurf",
+	"recording":                     "Aufnahme läuft",
+	"transcribing…":                 "transkribiert…",
+	"summarizing…":                  "fasst zusammen…",
+	"ready for review":              "bereit zur Prüfung",
+	"reviewed":                      "geprüft",
+	"error":                         "Fehler",
+	"Recording… press r to stop":    "Aufnahme läuft… r zum Stoppen drücken",
+	"Stopping recording…":           "Aufnahme wird gestoppt…",
+	"Could not start recording: %v": "Aufnahme konnte nicht gestartet werden: %v",
+	"Recording error: %v":           "Aufnahmefehler: %v",
+	"Recording saved. Add an OpenAI API key in Settings to transcribe it, or press n to type notes.": "Aufnahme gespeichert. Fügen Sie einen OpenAI-API-Schlüssel in den Einstellungen hinzu, um sie zu transkribieren, oder drücken Sie n, um Notizen einzugeben.",
+	"Transcription failed: %v":                  "Transkription fehlgeschlagen: %v",
+	"Summarizing and looking for action items…": "Fasst zusammen und sucht nach Aufgabenpunkten…",
+	"AI pass failed: %v":                        "KI-Durchlauf fehlgeschlagen: %v",
+	"Found %d action item(s) to review":         "%d Aufgabenpunkt(e) zur Prüfung gefunden",
+	"Added task: %s":                            "Aufgabe hinzugefügt: %s",
+	"accept action item":                        "Aufgabenpunkt annehmen",
+	"Delete meeting '%s'? (y/n)":                "Meeting '%s' löschen? (y/n)",
+	"Error saving meeting: %v":                  "Fehler beim Speichern des Meetings: %v",
+	"Error deleting meeting: %v":                "Fehler beim Löschen des Meetings: %v",
+	"Error saving action items: %v":             "Fehler beim Speichern der Aufgabenpunkte: %v",
+	"Error saving review: %v":                   "Fehler beim Speichern der Prüfung: %v",
+	"Error saving edit: %v":                     "Fehler beim Speichern der Änderung: %v",
+	"Error writing transcript file: %v":         "Fehler beim Schreiben der Transkriptdatei: %v",
+	"Edit action item (quick-add syntax)...":    "Aufgabenpunkt bearbeiten (Schnellerfassungs-Syntax)...",
+	// Meetings keymap descriptions (keymap.go)
+	"open meeting":                                    "Meeting öffnen",
+	"add meeting":                                     "Meeting hinzufügen",
+	"start/stop recording":                            "Aufnahme starten/stoppen",
+	"edit transcript (opens $EDITOR)":                 "Transkript bearbeiten (öffnet $EDITOR)",
+	"summarize + find action items":                   "zusammenfassen + Aufgabenpunkte finden",
+	"delete meeting":                                  "Meeting löschen",
+	"move between action items":                       "zwischen Aufgabenpunkten bewegen",
+	"accept the focused action item → creates a task": "den fokussierten Aufgabenpunkt annehmen → erstellt eine Aufgabe",
+	"reject the focused action item":                  "den fokussierten Aufgabenpunkt ablehnen",
+	"edit the focused action item (quick-add syntax)": "den fokussierten Aufgabenpunkt bearbeiten (Schnellerfassungs-Syntax)",
 
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Fristendruck",

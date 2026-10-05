@@ -111,6 +111,12 @@ func (m *model) exitFocus(s uiState) {
 		m.detailStack = nil
 		m.detail = detailState{field: fieldStartDate}
 		m.invalidateDetailCache()
+		// Meetings has no task to clear, but shares this same exit path — see
+		// handleMeetingsEnter, which pushes stateDetailPane the same way the
+		// Tasks/Projects/Tags detail panes do.
+		m.openMeetingID = ""
+		m.meetingSuggestions = nil
+		m.meetingReviewCursor = -1
 	case stateProjectDrill:
 		m.projectTaskMode = false
 		m.cursor = 0

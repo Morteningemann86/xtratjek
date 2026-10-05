@@ -241,6 +241,13 @@ func (m model) listPanelTitle() string {
 		return tr("Summary")
 	case tabSettings:
 		return tr("Preferences")
+	case tabMeetings:
+		if m.pane == paneDetail {
+			if mt := m.meetingByID(m.openMeetingID); mt != nil {
+				return tr("Meeting") + " · " + truncate(mt.Title, 30)
+			}
+		}
+		return tr("Meetings")
 	}
 	return tr("Overview")
 }
@@ -659,7 +666,8 @@ func (m model) footerContentFor(w int) string {
 		modeEditSyncURL, modeEditSyncToken,
 		modeEditServerListen, modeEditServerToken, modeEditStages,
 		modeEditExportFolder, modeImportFile,
-		modeEditAnthropicKey, modeEditOpenAIKey, modeEditGeminiKey, modeEditFFmpegInput:
+		modeEditAnthropicKey, modeEditOpenAIKey, modeEditGeminiKey, modeEditFFmpegInput,
+		modeAddMeeting, modeEditSuggestion:
 		field := inputStyle.Width(w).Render(m.textInput.View())
 		if m.mode == modeInput && m.pane == paneList {
 			// Quick-add: on a blank input show the syntax reference (the keywords
@@ -1044,6 +1052,9 @@ func (m model) buildListContent(w, outerH int) string {
 	}
 	if m.tab == tabSettings {
 		return m.buildSettingsContent(w, outerH)
+	}
+	if m.tab == tabMeetings {
+		return m.buildMeetingsContent(w, outerH)
 	}
 	if m.sideBySide() {
 		return m.buildSideBySide(w, outerH)
@@ -2212,6 +2223,7 @@ func (m model) renderTabs(avail int) string {
 		tabBoardActiveStyle,
 		tabStatsActiveStyle,
 		tabSettingsActiveStyle,
+		tabMeetingsActiveStyle,
 	}
 	inactiveStyles := [numTabs]lipgloss.Style{
 		tabTasksInactiveStyle,
@@ -2221,12 +2233,13 @@ func (m model) renderTabs(avail int) string {
 		tabBoardInactiveStyle,
 		tabStatsInactiveStyle,
 		tabSettingsInactiveStyle,
+		tabMeetingsInactiveStyle,
 	}
 	// The selected tab renders as a solid colored pill. Unselected tabs use
 	// the per-tab color as the foreground so each tab keeps its identity
 	// without a background block.
-	full := [numTabs]string{tr("1 Tasks"), tr("2 Calendar"), tr("3 Tags"), tr("4 Projects"), tr("5 Board"), tr("6 Stats"), tr("7 Settings")}
-	nums := [numTabs]string{"1", "2", "3", "4", "5", "6", "7"}
+	full := [numTabs]string{tr("1 Tasks"), tr("2 Calendar"), tr("3 Tags"), tr("4 Projects"), tr("5 Board"), tr("6 Stats"), tr("7 Settings"), tr("8 Meetings")}
+	nums := [numTabs]string{"1", "2", "3", "4", "5", "6", "7", "8"}
 
 	// abbr is the curated short label, one per tab, not a mechanical cut of the
 	// full one. Clipping to three letters produced "5 Boa", "6 Sta", "7 Set" —
@@ -2347,6 +2360,8 @@ func (m model) renderListContent() string {
 		return m.renderStatsList()
 	case tabSettings:
 		return m.renderSettingsList()
+	case tabMeetings:
+		return m.renderMeetingsList()
 	}
 	return ""
 }

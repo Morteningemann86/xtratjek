@@ -229,6 +229,20 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, clearErrAfter()
 	case editorFinishedMsg:
 		return m.handleEditorFinished(msg)
+	case recordingStoppedMsg:
+		return m.handleRecordingStopped(msg)
+	case transcribeDoneMsg:
+		return m.handleTranscribeDone(msg)
+	case aiPassDoneMsg:
+		return m.handleAIPassDone(msg)
+	case suggestionsLoadedMsg:
+		if msg.err == nil && msg.meetingID == m.openMeetingID {
+			m.meetingSuggestions = msg.suggestions
+			if m.meetingReviewCursor < 0 && len(m.meetingSuggestions) > 0 {
+				m.meetingReviewCursor = 0
+			}
+		}
+		return m, nil
 	case saveTickMsg:
 		m.saveScheduled = false
 		if m.savePending {
@@ -397,6 +411,10 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newModel, cmd = m.updateEditGeminiKey(msg)
 	case modeEditFFmpegInput:
 		newModel, cmd = m.updateEditFFmpegInput(msg)
+	case modeAddMeeting:
+		newModel, cmd = m.updateAddMeeting(msg)
+	case modeEditSuggestion:
+		newModel, cmd = m.updateEditSuggestion(msg)
 	case modeAddSubtask:
 		newModel, cmd = m.updateAddSubtask(msg)
 	case modeEditSubtask:
@@ -414,9 +432,16 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case modeSearchTagTab:
 		newModel, cmd = m.updateSearchTagTab(msg)
 	default:
-		if m.pane == paneList {
+		switch {
+		case m.tab == tabMeetings && m.pane == paneDetail:
+			// Meetings' detail pane (recording/generating/reviewing) has no
+			// equivalent in updateDetail, which is Tasks-detail-specific
+			// (m.currentTodo(), m.detail field cursor) — its own self-
+			// contained handler, the same way updateDetail itself is.
+			newModel, cmd = m.updateMeetingsDetail(msg)
+		case m.pane == paneList:
 			newModel, cmd = m.updateList(msg)
-		} else {
+		default:
 			newModel, cmd = m.updateDetail(msg)
 		}
 	}
@@ -523,6 +548,28 @@ func (m model) handleEditorFinished(msg editorFinishedMsg) (tea.Model, tea.Cmd) 
 	if err != nil {
 		m.flashError(fmt.Sprintf("Error reading description: %v", err))
 		return m, clearErrAfter()
+	}
+
+	// A meeting's transcript, not a task's notes — see
+	// openEditorForMeetingTranscript. Checked before editorToInput/the todo
+	// path below: a meeting ID never collides with a task ID (both are
+	// uuid.New()) or the ctrl+e draft sentinel, but the check order still
+	// matters because editorMeetingID and editorTaskID can both be stale
+	// between runs and only one of them is meant to win.
+	if m.editorMeetingID == taskID && taskID != "" {
+		m.editorMeetingID = ""
+		cleanupNotesFile(taskID)
+		if mt := m.meetingByID(taskID); mt != nil {
+			newTranscript := strings.TrimRight(content, "\n\r ")
+			if newTranscript != mt.Transcript {
+				mt.Transcript = newTranscript
+				if saveErr := saveMeeting(mt); saveErr != nil {
+					m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), saveErr))
+					return m, clearErrAfter()
+				}
+			}
+		}
+		return m, nil
 	}
 
 	// ctrl+e escape hatch: the content is a comment draft, not notes —
@@ -809,8 +856,11 @@ func (m model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.tab == tabTasks && !m.showHistory && m.currentTodo() != nil {
 				return m, m.openEditorForNotes()
 			}
+			if m.tab == tabMeetings {
+				return m, m.openEditorForMeetingTranscript()
+			}
 
-		case "1", "2", "3", "4", "5", "6", "7":
+		case "1", "2", "3", "4", "5", "6", "7", "8":
 			if t, ok := m.tabForNumberKey(key.String()); ok {
 				m.switchTab(t)
 			}
@@ -1013,6 +1063,9 @@ func (m model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleListEnter()
 
 		case "r":
+			if m.tab == tabMeetings {
+				return m.handleMeetingsToggleRecord()
+			}
 			return m.handleListRename()
 
 		case "m":
@@ -1034,9 +1087,24 @@ func (m model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "x", "delete":
+			if m.tab == tabMeetings {
+				return m.handleMeetingsDeleteOrReject()
+			}
 			return m.handleListDelete()
 
+		case "g":
+			if m.tab == tabMeetings {
+				return m.handleMeetingsRunAI()
+			}
+
 		case "a":
+			if m.tab == tabMeetings {
+				m.mode = modeAddMeeting
+				m.textInput.SetValue("")
+				m.textInput.Placeholder = tr("Meeting title...")
+				m.textInput.Focus()
+				return m, textinput.Blink
+			}
 			// Quick-add, pre-seeded with the grouping you are standing in: on
 			// the Tags/Projects tab the new task lands in the tag or project
 			// you are looking at, so capturing into it costs one key instead
@@ -1391,6 +1459,8 @@ func tabForNumberKeyRaw(key string) (tab, bool) {
 		return tabStats, true
 	case "7":
 		return tabSettings, true
+	case "8":
+		return tabMeetings, true
 	}
 	return tabTasks, false
 }
@@ -1771,6 +1841,8 @@ func (m *model) moveCursorUp() {
 		}
 	case tabStats:
 		m.statsScroll = max(0, min(m.statsScroll, m.statsMaxScroll())-1)
+	case tabMeetings:
+		m.moveMeetingsCursor(-1)
 	}
 }
 
@@ -1812,6 +1884,8 @@ func (m *model) moveCursorDown() {
 		}
 	case tabStats:
 		m.statsScroll = min(m.statsScroll+1, m.statsMaxScroll())
+	case tabMeetings:
+		m.moveMeetingsCursor(1)
 	}
 }
 
@@ -1905,6 +1979,8 @@ func (m *model) currentProjectTaskLen() int {
 
 func (m model) handleListEnter() (tea.Model, tea.Cmd) {
 	switch m.tab {
+	case tabMeetings:
+		return m.handleMeetingsEnter()
 	case tabBoard:
 		m.startBoardCarry()
 	case tabCalendar:

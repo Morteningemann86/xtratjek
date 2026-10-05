@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Iliorn/tjek/aiprovider"
+	"github.com/Iliorn/tjek/meeting"
 	"github.com/Iliorn/tjek/paths"
 	"github.com/Iliorn/tjek/rank"
 	"github.com/Iliorn/tjek/tasksync"
@@ -29,9 +30,10 @@ const (
 	tabBoard
 	tabStats
 	tabSettings
+	tabMeetings
 )
 
-const numTabs = 7
+const numTabs = 8
 
 // Stable row IDs for the Settings tab. The renderer draws them in groups; their
 // numeric order remains independent of their visual navigation order.
@@ -161,6 +163,11 @@ const (
 	modeEditOpenAIKey
 	modeEditGeminiKey
 	modeEditFFmpegInput
+	// modeAddMeeting is the title prompt for a new meeting (update_meetings.go).
+	modeAddMeeting
+	// modeEditSuggestion edits one action-item suggestion using quick-add
+	// syntax (parseQuickAdd), pre-filled from its current fields.
+	modeEditSuggestion
 )
 
 // untaggedKey is a sentinel used both as the Tags-tab virtual row for tasks
@@ -490,6 +497,29 @@ type model struct {
 	aiProvider  string
 	aiKeys      aiprovider.Keys
 	ffmpegInput string
+
+	// Meetings tab state (meetingops.go, update_meetings.go, view_meetings.go).
+	// The list itself is indexed by the shared m.cursor/m.listOffset like
+	// every other tab; m.pane (paneList/paneDetail) decides whether the list
+	// or openMeetingID's detail is showing.
+	meetings      []*meeting.Meeting
+	openMeetingID string
+	// meetingSuggestions holds the open meeting's suggestions once it has
+	// reached StatusReady — empty otherwise. meetingReviewCursor is the
+	// focused row within them, active (y/n/e) only while pane is paneDetail
+	// and the list is non-empty.
+	meetingSuggestions  []meeting.Suggestion
+	meetingReviewCursor int
+	// recorder is non-nil while a recording is in progress; recordingMeetingID
+	// names which meeting owns it (StartRecording/Stop run outside the model,
+	// so the pointer is the only handle back to the live ffmpeg process).
+	recorder           *AudioRecorder
+	recordingMeetingID string
+	recordStart        time.Time
+	// editorMeetingID is non-"" while $EDITOR holds this meeting's transcript
+	// — the meeting equivalent of editorTaskID, checked first in
+	// handleEditorFinished before it falls through to the todo-notes path.
+	editorMeetingID string
 }
 
 func initialModel(repo Repository) model {
@@ -589,8 +619,9 @@ func initialModel(repo Repository) model {
 			OpenAI:    settings.OpenAIKey,
 			Gemini:    settings.GeminiKey,
 		},
-		ffmpegInput: settings.FFmpegInput,
-		remindedOn:  loadRemindedOn(),
+		ffmpegInput:         settings.FFmpegInput,
+		meetingReviewCursor: -1,
+		remindedOn:          loadRemindedOn(),
 		// The top of the one settings pane. The zero value is a row ID, not a
 		// position, and it happens to be the first bias knob — which opened
 		// the tab with the cursor parked in the middle of the list.
@@ -644,6 +675,18 @@ func initialModel(repo Repository) model {
 		if srv, stop, err := startSyncServer(m.syncCfg.listenAddr(), m.syncCfg.ServerToken); err == nil {
 			m.inprocServer = srv
 			m.inprocStop = stop
+		}
+	}
+	// Meetings load eagerly like everything else at startup (a small local
+	// read, same cost class as repo.Load()); a failure is non-fatal and just
+	// starts the tab empty rather than blocking launch over it. Loaded as
+	// *meeting.Meeting (not values) so a pointer handed out by currentMeeting/
+	// meetingByID stays valid even if m.meetings is later reallocated by append
+	// — the same reasoning Store.tasks being map[string]*todo.Todo follows.
+	if loaded, err := loadMeetings(); err == nil {
+		m.meetings = make([]*meeting.Meeting, len(loaded))
+		for i := range loaded {
+			m.meetings[i] = &loaded[i]
 		}
 	}
 	m.calendar.selected = startOfDay(time.Now())
