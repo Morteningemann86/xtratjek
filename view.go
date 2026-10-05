@@ -282,6 +282,9 @@ func (m model) View() string {
 	if m.mode == modeExplain {
 		return m.renderExplainFullscreen()
 	}
+	if m.mode == modeEditMeetingText {
+		return m.renderEditMeetingTextFullscreen()
+	}
 
 	out := getBuilder()
 	defer putBuilder(out)
@@ -465,11 +468,12 @@ func (m model) listPanelOuterH(detailLines, footerLines int) int {
 // ── Status line ────────────────────────────────────────────────────────────────
 
 // renderStatusLine builds the single fixed header status line under the tab
-// bar: filter chips on the left, the Tags-tab sort label and sync-health glyph
-// on the right. The Tasks-tab sort label lives beside its cursor/total counter
-// in the Overview or History panel title. A toast (m.err) overlays the whole line for its lifetime
-// instead of claiming its own row, so filters and toasts coming and going never
-// reflow the list below.
+// bar: filter chips on the left, a recording indicator (while a meeting
+// recording is in progress) and the sync-health glyph on the right. The
+// Tasks-tab sort label lives beside its cursor/total counter in the Overview
+// or History panel title. A toast (m.err) overlays the whole line for its
+// lifetime instead of claiming its own row, so filters and toasts coming and
+// going never reflow the list below.
 func (m model) renderStatusLine() string {
 	width := m.termWidth - 2
 	if width < 1 {
@@ -503,6 +507,9 @@ func (m model) renderStatusLine() string {
 	left := strings.Join(chips, " ")
 
 	var right []string
+	if ri := m.recordingIndicator(); ri != "" {
+		right = append(right, ri)
+	}
 	if g := m.syncGlyph(); g != "" {
 		right = append(right, g)
 	}

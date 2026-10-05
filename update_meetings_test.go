@@ -186,3 +186,48 @@ func TestScriptDeleteMeetingAsksToConfirm(t *testing.T) {
 		t.Fatalf("after confirming delete: meetings = %d, want 0", len(m.meetings))
 	}
 }
+
+// TestScriptEditMeetingNotesCtrlSSavesEscDiscards exercises the in-app
+// textarea editor that replaced the $EDITOR round trip for Notes/Transcript:
+// "n" opens it seeded from the current value, ctrl+s commits and returns to
+// modeNormal, esc discards without touching the field.
+func TestScriptEditMeetingNotesCtrlSSavesEscDiscards(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "1:1 with Alice", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter") // open the detail pane
+
+	m = sendKey(t, m, "n")
+	if m.mode != modeEditMeetingText {
+		t.Fatalf("after 'n': mode = %v, want modeEditMeetingText", m.mode)
+	}
+	if m.meetingEditID != mt.ID || m.meetingEditField != "notes" {
+		t.Fatalf("meetingEditID=%q meetingEditField=%q, want %q/notes", m.meetingEditID, m.meetingEditField, mt.ID)
+	}
+	if !m.meetingTextarea.Focused() {
+		t.Fatal("meetingTextarea is not focused after 'n'")
+	}
+
+	m = script(t, m, "Ask about the Q4 budget", "ctrl+s")
+	if m.mode != modeNormal {
+		t.Fatalf("after ctrl+s: mode = %v, want modeNormal", m.mode)
+	}
+	if mt.Notes != "Ask about the Q4 budget" {
+		t.Fatalf("mt.Notes = %q, want %q", mt.Notes, "Ask about the Q4 budget")
+	}
+	if mt.Transcript != "" {
+		t.Fatalf("saving Notes touched Transcript: %q", mt.Transcript)
+	}
+
+	// Re-open and discard: esc must leave the saved value untouched, even
+	// though the textarea was edited in between.
+	m = sendKey(t, m, "n")
+	m = script(t, m, " — more", "esc")
+	if m.mode != modeNormal {
+		t.Fatalf("after esc: mode = %v, want modeNormal", m.mode)
+	}
+	if mt.Notes != "Ask about the Q4 budget" {
+		t.Fatalf("esc should discard the edit, got mt.Notes = %q", mt.Notes)
+	}
+}

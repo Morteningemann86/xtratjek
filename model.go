@@ -14,6 +14,7 @@ import (
 	"github.com/Iliorn/tjek/rank"
 	"github.com/Iliorn/tjek/tasksync"
 	"github.com/Iliorn/tjek/todo"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -168,6 +169,10 @@ const (
 	// modeEditSuggestion edits one action-item suggestion using quick-add
 	// syntax (parseQuickAdd), pre-filled from its current fields.
 	modeEditSuggestion
+	// modeEditMeetingText is the fullscreen textarea for a meeting's Notes or
+	// Transcript (update_meetings.go) — which field is set by
+	// meetingEditField. ctrl+s saves, esc discards; no $EDITOR round trip.
+	modeEditMeetingText
 )
 
 // untaggedKey is a sentinel used both as the Tags-tab virtual row for tasks
@@ -516,13 +521,13 @@ type model struct {
 	recorder           *AudioRecorder
 	recordingMeetingID string
 	recordStart        time.Time
-	// editorMeetingID is non-"" while $EDITOR holds one of this meeting's text
-	// fields — the meeting equivalent of editorTaskID, checked first in
-	// handleEditorFinished before it falls through to the todo-notes path.
-	// editorMeetingField says which field ("notes" or "transcript"), since
-	// both round-trip through the same mechanism.
-	editorMeetingID    string
-	editorMeetingField string
+	// meetingTextarea is the in-app editor for a meeting's Notes or
+	// Transcript (modeEditMeetingText) — ctrl+s saves, esc discards.
+	// meetingEditID/meetingEditField name which meeting and which field
+	// ("notes" or "transcript") it's currently holding.
+	meetingTextarea  textarea.Model
+	meetingEditID    string
+	meetingEditField string
 }
 
 func initialModel(repo Repository) model {
@@ -546,6 +551,9 @@ func initialModel(repo Repository) model {
 	pal.Prompt = "❯ "
 	tagTabSearch := textinput.New()
 	tagTabSearch.CharLimit = 50
+
+	meetingTA := textarea.New()
+	meetingTA.ShowLineNumbers = false
 
 	todos, err := repo.Load()
 	errMsg := ""
@@ -601,6 +609,7 @@ func initialModel(repo Repository) model {
 		projSearchInput:   proji,
 		tagTabSearchInput: tagTabSearch,
 		paletteInput:      pal,
+		meetingTextarea:   meetingTA,
 		mode:              modeNormal,
 		pane:              paneList,
 		tab:               tabTasks,

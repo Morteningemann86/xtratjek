@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Iliorn/tjek/meeting"
 
@@ -53,6 +54,25 @@ func trMeetingStatus(s meeting.Status) string {
 		return tr("error")
 	}
 	return string(s)
+}
+
+// recordingIndicator is the "a recording is in progress" cue the status line
+// shows regardless of which tab is open: recording keeps running in the
+// background after navigating away or switching tabs (handleMeetingsToggleRecord
+// doesn't stop it), so the status line is the one place it's visible from
+// everywhere, the same way the running-task timer is.
+func (m model) recordingIndicator() string {
+	if m.recorder == nil {
+		return ""
+	}
+	mt := m.meetingByID(m.recordingMeetingID)
+	if mt == nil {
+		return ""
+	}
+	elapsed := time.Since(m.recordStart)
+	mm := int(elapsed.Minutes())
+	ss := int(elapsed.Seconds()) % 60
+	return overdueStyle.Render(fmt.Sprintf("● %s%s %02d:%02d", tr("Recording: "), truncate(mt.Title, 20), mm, ss))
 }
 
 // renderMeetingsList is renderListContent's Meetings case — kept for
@@ -148,9 +168,10 @@ func (m model) renderMeetingDetail(w int) (string, int) {
 
 	// Three sections, always present and in this order: what I wrote, what
 	// was said, what the AI made of it. Each is its own field on Meeting
-	// (Notes/Transcript/Summary) and its own $EDITOR round trip (n/T) where
-	// editable, so none of the three can overwrite another the way one
-	// shared field used to risk — see meeting.Meeting's field comments.
+	// (Notes/Transcript/Summary) and its own in-app editor (n/T,
+	// modeEditMeetingText) where editable, so none of the three can
+	// overwrite another the way one shared field used to risk — see
+	// meeting.Meeting's field comments.
 	writeln(titleStyle.Render(tr("My notes")) + dimStyle.Render("  ("+effectiveKey("notes", "n")+")"))
 	if mt.Notes != "" {
 		for _, ln := range wrapPlain(mt.Notes, w) {
@@ -226,6 +247,68 @@ func (m model) renderSuggestionRow(s meeting.Suggestion, focused bool, w int) []
 		return []string{selectedRowStyle.Render(ansi.Truncate(title, w, "…")), selectedStyle.Render(ansi.Truncate(trailer, w, "…"))}
 	}
 	return []string{normalStyle.Render(title), dimStyle.Render(trailer)}
+}
+
+// meetingEditChromeLines is the fixed chrome renderEditMeetingTextFullscreen
+// wraps the textarea in: a blank line, the heading, a blank line, a blank
+// line, and the save/cancel hint — everything but the textarea itself.
+const meetingEditChromeLines = 5
+
+// renderEditMeetingTextFullscreen draws the in-app Notes/Transcript editor —
+// full-screen chrome of its own, like the help and explain overlays, so
+// editing a meeting's own text never leaves tjek the way the old $EDITOR
+// round trip did.
+func (m model) renderEditMeetingTextFullscreen() string {
+	mt := m.meetingByID(m.meetingEditID)
+	title := tr("My notes")
+	if m.meetingEditField == "transcript" {
+		title = tr("Transcript")
+	}
+	heading := title
+	if mt != nil {
+		heading = fmt.Sprintf("%s — %s", title, mt.Title)
+	}
+
+	b := getBuilder()
+	defer putBuilder(b)
+
+	b.WriteString("\n")
+	b.WriteString(titleStyle.Render("  "+heading) + "\n")
+	b.WriteString("\n")
+
+	width := m.termWidth - 4
+	if width < 1 {
+		width = 1
+	}
+	height := m.termHeight - meetingEditChromeLines
+	if height < 1 {
+		height = 1
+	}
+	ta := m.meetingTextarea
+	ta.SetWidth(width)
+	ta.SetHeight(height)
+	for _, ln := range strings.Split(ta.View(), "\n") {
+		b.WriteString("  " + ln + "\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("  "+tr("ctrl+s to save  ·  esc to cancel")) + "\n")
+
+	lines := strings.Split(b.String(), "\n")
+	if m.termWidth > 0 {
+		truncateLines(lines, m.termWidth)
+	}
+	target := m.termHeight - 1
+	if target < 0 {
+		target = 0
+	}
+	for len(lines) < target {
+		lines = append(lines, "")
+	}
+	if len(lines) > target {
+		lines = lines[:target]
+	}
+	return strings.Join(lines, "\n")
 }
 
 // wrapPlain word-wraps s to width w, a minimal wrapper for the transcript and

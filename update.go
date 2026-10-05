@@ -415,6 +415,8 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newModel, cmd = m.updateAddMeeting(msg)
 	case modeEditSuggestion:
 		newModel, cmd = m.updateEditSuggestion(msg)
+	case modeEditMeetingText:
+		newModel, cmd = m.updateEditMeetingText(msg)
 	case modeAddSubtask:
 		newModel, cmd = m.updateAddSubtask(msg)
 	case modeEditSubtask:
@@ -548,38 +550,6 @@ func (m model) handleEditorFinished(msg editorFinishedMsg) (tea.Model, tea.Cmd) 
 	if err != nil {
 		m.flashError(fmt.Sprintf("Error reading description: %v", err))
 		return m, clearErrAfter()
-	}
-
-	// One of a meeting's own text fields (Notes or Transcript), not a task's
-	// notes — see openEditorForMeetingField. Checked before editorToInput/the
-	// todo path below: a meeting ID never collides with a task ID (both are
-	// uuid.New()) or the ctrl+e draft sentinel, but the check order still
-	// matters because editorMeetingID and editorTaskID can both be stale
-	// between runs and only one of them is meant to win.
-	if m.editorMeetingID == taskID && taskID != "" {
-		m.editorMeetingID = ""
-		field := m.editorMeetingField
-		m.editorMeetingField = ""
-		cleanupNotesFile(taskID)
-		if mt := m.meetingByID(taskID); mt != nil {
-			edited := strings.TrimRight(content, "\n\r ")
-			changed := false
-			switch field {
-			case "transcript":
-				changed = edited != mt.Transcript
-				mt.Transcript = edited
-			default: // "notes", and the fallback for a stale/empty field value
-				changed = edited != mt.Notes
-				mt.Notes = edited
-			}
-			if changed {
-				if saveErr := saveMeeting(mt); saveErr != nil {
-					m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), saveErr))
-					return m, clearErrAfter()
-				}
-			}
-		}
-		return m, nil
 	}
 
 	// ctrl+e escape hatch: the content is a comment draft, not notes —
@@ -867,7 +837,7 @@ func (m model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.openEditorForNotes()
 			}
 			if m.tab == tabMeetings {
-				return m, m.openEditorForMeetingNotes()
+				return m, m.startEditMeetingText("notes")
 			}
 
 		case "1", "2", "3", "4", "5", "6", "7", "8":
@@ -1037,7 +1007,7 @@ func (m model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			if m.tab == tabMeetings {
-				return m, m.openEditorForMeetingTranscript()
+				return m, m.startEditMeetingText("transcript")
 			}
 
 		case "w":

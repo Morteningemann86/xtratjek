@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 	"time"
 
@@ -82,9 +81,9 @@ func (m model) updateMeetingsDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "g":
 		return m.handleMeetingsRunAI()
 	case "n":
-		return m, m.openEditorForMeetingNotes()
+		return m, m.startEditMeetingText("notes")
 	case "T":
-		return m, m.openEditorForMeetingTranscript()
+		return m, m.startEditMeetingText("transcript")
 	}
 	return m, nil
 }
@@ -478,51 +477,72 @@ func (m model) updateEditSuggestion(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// openEditorForMeetingNotes is "n" on the Meetings tab: $EDITOR over the
-// user's own hand-typed Notes — distinct from the machine Transcript, see
-// openEditorForMeetingTranscript.
-func (m *model) openEditorForMeetingNotes() tea.Cmd {
+// startEditMeetingText is "n" (notes) or "T" (transcript) on the Meetings
+// tab: it seeds meetingTextarea from the target meeting's current field,
+// focuses it, and switches to modeEditMeetingText — an in-app multi-line
+// editor (ctrl+s saves, esc discards) rather than a round trip through
+// $EDITOR, which felt like a context switch for what's often a one-line note.
+func (m *model) startEditMeetingText(field string) tea.Cmd {
 	mt := m.meetingForEditorTarget()
 	if mt == nil {
 		return nil
 	}
-	return m.openEditorForMeetingField(mt, "notes", mt.Notes)
+	current := mt.Notes
+	if field == "transcript" {
+		current = mt.Transcript
+	}
+	m.meetingEditID = mt.ID
+	m.meetingEditField = field
+	m.meetingTextarea.SetValue(current)
+	m.meetingTextarea.CursorEnd()
+	m.mode = modeEditMeetingText
+	return m.meetingTextarea.Focus()
 }
 
-// openEditorForMeetingTranscript is "T" on the Meetings tab: $EDITOR over the
-// machine-produced Transcript, for correcting a transcription error. Most
-// meetings never need this — it exists for when the recording mis-heard
-// something badly enough to be worth fixing before the AI pass reads it.
-func (m *model) openEditorForMeetingTranscript() tea.Cmd {
-	mt := m.meetingForEditorTarget()
-	if mt == nil {
-		return nil
-	}
-	return m.openEditorForMeetingField(mt, "transcript", mt.Transcript)
-}
-
-// openEditorForMeetingField is the shared body of the two openers above —
-// the same round trip openEditorForNotes uses for task notes
-// (execEditor/handleEditorFinished are shared; see editorMeetingID there).
-// field is "notes" or "transcript"; handleEditorFinished reads it back from
-// editorMeetingField to know which one to write the result into.
-func (m *model) openEditorForMeetingField(mt *meeting.Meeting, field, current string) tea.Cmd {
-	if err := writeNotesFile(mt.ID, current); err != nil {
-		m.flashError(fmt.Sprintf(tr("Error writing transcript file: %v"), err))
-		return clearErrAfter()
-	}
-	editorCmd := resolveEditorCmd()
-	if editorCmd == "" {
-		if runtime.GOOS == "windows" {
-			m.flashError(tr("No editor found. Set EDITOR permanently, e.g: setx EDITOR notepad (then restart tjek)"))
-		} else {
-			m.flashError(tr("No editor found. Set $EDITOR permanently, e.g: echo 'set -Ux EDITOR /usr/lib/helix/hx' >> ~/.config/fish/config.fish"))
+// updateEditMeetingText drives modeEditMeetingText: ctrl+s commits the
+// textarea's value into the target field and saves, esc discards, anything
+// else is ordinary textarea editing.
+func (m model) updateEditMeetingText(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if key, ok := msg.(tea.KeyMsg); ok {
+		switch key.String() {
+		case "ctrl+s":
+			id, field := m.meetingEditID, m.meetingEditField
+			m.meetingEditID = ""
+			m.meetingEditField = ""
+			m.meetingTextarea.Blur()
+			m.mode = modeNormal
+			if mt := m.meetingByID(id); mt != nil {
+				edited := m.meetingTextarea.Value()
+				changed := false
+				switch field {
+				case "transcript":
+					changed = edited != mt.Transcript
+					mt.Transcript = edited
+				default: // "notes", and the fallback for a stale/empty field value
+					changed = edited != mt.Notes
+					mt.Notes = edited
+				}
+				if changed {
+					if err := saveMeeting(mt); err != nil {
+						m.flashError(fmt.Sprintf(tr("Error saving meeting: %v"), err))
+						return m, clearErrAfter()
+					}
+					m.flashSuccess(tr("Saved"))
+					return m, clearErrAfter()
+				}
+			}
+			return m, nil
+		case "esc":
+			m.meetingEditID = ""
+			m.meetingEditField = ""
+			m.meetingTextarea.Blur()
+			m.mode = modeNormal
+			return m, nil
 		}
-		return clearErrAfter()
 	}
-	m.editorMeetingID = mt.ID
-	m.editorMeetingField = field
-	return execEditor(editorCmd, mt.ID, false)
+	var cmd tea.Cmd
+	m.meetingTextarea, cmd = m.meetingTextarea.Update(msg)
+	return m, cmd
 }
 
 // startEditFocusedSuggestion opens modeEditSuggestion seeded from the
