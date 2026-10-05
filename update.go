@@ -231,6 +231,8 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleEditorFinished(msg)
 	case recordingStoppedMsg:
 		return m.handleRecordingStopped(msg)
+	case ffmpegInstallFinishedMsg:
+		return m.handleFFmpegInstallFinished(msg)
 	case transcribeDoneMsg:
 		return m.handleTranscribeDone(msg)
 	case aiPassDoneMsg:

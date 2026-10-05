@@ -7,8 +7,15 @@ healthy. Paste its output into a bug report.
 ## "ffmpeg not found" when recording a meeting
 
 Recording a meeting (Meetings tab, `r`) shells out to `ffmpeg`, which tjek
-doesn't bundle or install — `tjek doctor` reports whether it can find it on
-`PATH`. Install it with:
+doesn't bundle — `tjek doctor` reports whether it can find it on `PATH`. If
+it's missing, pressing `r` offers to install it right there: `y` runs your
+platform's package manager (asking for a sudo password, or a one-time
+license prompt, directly in the same terminal tjek is already running in),
+and recording starts automatically once it's done. tjek never does this
+without that explicit `y` first.
+
+If you'd rather install it yourself, or the automatic offer doesn't find a
+package manager it knows how to drive:
 
 | | |
 |---|---|

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -242,5 +244,87 @@ func TestScriptEditMeetingNotesCtrlSAndEscBothSave(t *testing.T) {
 	}
 	if mt.Notes != "Ask about the Q4 budget — more" {
 		t.Fatalf("esc should save like ctrl+s, got mt.Notes = %q", mt.Notes)
+	}
+}
+
+// TestScriptRecordWithoutFFmpegOffersToInstallIt covers the confirm prompt
+// only — not confirmOnYes itself, which would actually exec a package
+// manager. This relies on ffmpeg genuinely being absent, the same
+// environment TestStartRecordingNoFFmpeg (audiorecorder_test.go) depends on.
+func TestScriptRecordWithoutFFmpegOffersToInstallIt(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err == nil {
+		t.Skip("ffmpeg is installed in this environment; the not-found path can't be exercised here")
+	}
+
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter") // open the detail pane
+
+	m = sendKey(t, m, "r")
+	if m.mode != modeConfirm {
+		t.Fatalf("after 'r' with no ffmpeg: mode = %v, want modeConfirm", m.mode)
+	}
+	if !strings.Contains(m.confirmMsg, "ffmpeg") {
+		t.Fatalf("confirmMsg = %q, want it to mention ffmpeg", m.confirmMsg)
+	}
+	if m.pendingFFmpegInstallMeetingID != mt.ID {
+		t.Fatalf("pendingFFmpegInstallMeetingID = %q, want %q", m.pendingFFmpegInstallMeetingID, mt.ID)
+	}
+	if m.confirmOnYes == nil {
+		t.Fatal("confirmOnYes is nil; 'y' would do nothing")
+	}
+	if mt.Status == meeting.StatusRecording {
+		t.Fatal("recording must not have started before the install prompt is answered")
+	}
+
+	// "n" backs out through the generic modeConfirm decline path, which
+	// resets mode and confirmOnYes but — like pendingDeleteID elsewhere —
+	// leaves pendingFFmpegInstallMeetingID set; it's inert until the next
+	// promptInstallFFmpeg overwrites it, and nothing reads it outside that.
+	m = sendKey(t, m, "n")
+	if m.mode != modeNormal {
+		t.Fatalf("after 'n': mode = %v, want modeNormal", m.mode)
+	}
+	if m.confirmOnYes != nil {
+		t.Fatal("confirmOnYes should be cleared after declining")
+	}
+}
+
+// TestHandleFFmpegInstallFinished covers the two outcomes that don't require
+// an actual package manager run: the install command itself erroring, and
+// it exiting cleanly without ffmpeg actually ending up on PATH (a declined
+// sudo prompt or agreement prompt can do this without a non-zero exit).
+// The success-and-resume path needs ffmpeg to really be installed partway
+// through the test and is checked by hand instead, same as
+// TestStartRecordingNoFFmpeg's note on the record→Stop round trip.
+func TestHandleFFmpegInstallFinished(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err == nil {
+		t.Skip("ffmpeg is installed in this environment; the not-found-after-install path can't be exercised here")
+	}
+
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter")
+
+	next, _ := m.Update(ffmpegInstallFinishedMsg{meetingID: mt.ID, err: errors.New("exit status 1")})
+	m = next.(model)
+	if !strings.Contains(m.err, "failed") {
+		t.Fatalf("err flash = %q, want it to mention the install failing", m.err)
+	}
+	if mt.Status == meeting.StatusRecording {
+		t.Fatal("a failed install must not have started recording")
+	}
+
+	next, _ = m.Update(ffmpegInstallFinishedMsg{meetingID: mt.ID})
+	m = next.(model)
+	if !strings.Contains(m.err, "PATH") {
+		t.Fatalf("err flash = %q, want it to say ffmpeg still isn't on PATH", m.err)
+	}
+	if mt.Status == meeting.StatusRecording {
+		t.Fatal("recording must not start when ffmpeg still isn't found after the install")
 	}
 }

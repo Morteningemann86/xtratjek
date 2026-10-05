@@ -597,7 +597,18 @@ for it from this tab.
   (`packaging/generate-packages.sh`) declares it as a dependency so
   `scoop install tjek` pulls it in without a separate step — the Homebrew
   tap (a different repository, `Iliorn/homebrew-tap`) does not yet do the
-  equivalent with `depends_on "ffmpeg"`.
+  equivalent with `depends_on "ffmpeg"`. If "r" finds ffmpeg missing anyway,
+  it doesn't just show the hint — `ffmpegInstallCommand` resolves an actual
+  command for this machine (`brew`/`winget`/`apt-get`/`dnf`/`pacman`, `sudo`
+  prepended on Linux when it's on `PATH`), and `promptInstallFFmpeg` asks a
+  y/n (`modeConfirm`) before running it. Only that explicit confirmation
+  authorizes it — tjek never shells out to a package manager unprompted. On
+  yes, `confirmInstallFFmpeg` hands the terminal to the install command the
+  same way `execEditor` hands it to `$EDITOR` (`tea.ExecProcess`, so a sudo
+  password prompt or a first-run license prompt shows up normally), and
+  `handleFFmpegInstallFinished` re-checks `PATH` once it returns (exit 0
+  doesn't guarantee ffmpeg actually landed — a declined prompt can exit
+  clean) and resumes the same recording automatically if it did.
 - **The detail pane has its own key handler**, `updateMeetingsDetail`,
   parallel to `updateDetail` rather than sharing `updateList`'s switch:
   recording, generating and reviewing only make sense once a meeting is

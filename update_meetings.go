@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -208,6 +209,17 @@ func (m model) handleMeetingsToggleRecord() (tea.Model, tea.Cmd) {
 	if mt == nil || !mt.CanRecord() {
 		return m, nil
 	}
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		return m.promptInstallFFmpeg(mt.ID)
+	}
+	return m.startRecordingFor(mt)
+}
+
+// startRecordingFor actually launches ffmpeg for mt. Split out of
+// handleMeetingsToggleRecord so handleFFmpegInstallFinished can resume the
+// same "r" press automatically once an install it triggered succeeds,
+// without the user needing to press r a second time.
+func (m model) startRecordingFor(mt *meeting.Meeting) (tea.Model, tea.Cmd) {
 	rec, err := startMeetingRecording(mt, m.ffmpegInput)
 	if err != nil {
 		m.flashError(fmt.Sprintf(tr("Could not start recording: %v"), err))
@@ -221,6 +233,61 @@ func (m model) handleMeetingsToggleRecord() (tea.Model, tea.Cmd) {
 	m.recordStart = time.Now()
 	m.flashInfo(tr("Recording… press r to stop"))
 	return m, clearErrAfter()
+}
+
+// promptInstallFFmpeg is reached when "r" finds ffmpeg missing. tjek can run
+// the platform's package manager itself (ffmpegInstallCommand), but that's a
+// system-modifying action, so it only ever runs after this explicit y/n —
+// never silently, and only when a command to run was actually found; with
+// none available this falls back to the same copy-paste hint as before.
+func (m model) promptInstallFFmpeg(meetingID string) (tea.Model, tea.Cmd) {
+	name, args, ok := ffmpegInstallCommand()
+	if !ok {
+		m.flashError(fmt.Sprintf(tr("ffmpeg not found — %s"), ffmpegInstallHint()))
+		return m, clearErrAfter()
+	}
+	m.pendingFFmpegInstallMeetingID = meetingID
+	m.mode = modeConfirm
+	m.confirmMsg = fmt.Sprintf(tr("ffmpeg isn't installed. Run '%s' now? (y/n)"),
+		strings.Join(append([]string{name}, args...), " "))
+	m.confirmOnYes = (*model).confirmInstallFFmpeg
+	return m, nil
+}
+
+// confirmInstallFFmpeg is modeConfirm's y/n action for promptInstallFFmpeg —
+// it re-resolves the command rather than threading it through confirmMsg, so
+// what runs is always freshly checked against PATH, not a stale string.
+func (m *model) confirmInstallFFmpeg() tea.Cmd {
+	meetingID := m.pendingFFmpegInstallMeetingID
+	m.pendingFFmpegInstallMeetingID = ""
+	name, args, ok := ffmpegInstallCommand()
+	if !ok {
+		m.flashError(fmt.Sprintf(tr("ffmpeg not found — %s"), ffmpegInstallHint()))
+		return clearErrAfter()
+	}
+	return ffmpegInstallCmd(meetingID, name, args)
+}
+
+// handleFFmpegInstallFinished resumes the recording that prompted the
+// install, once ffmpeg is confirmed to actually be on PATH — the install
+// command can exit 0 without installing anything a human would call
+// success (a cancelled sudo prompt, a declined agreement), so this checks
+// for ffmpeg itself rather than trusting the exit code alone.
+func (m model) handleFFmpegInstallFinished(msg ffmpegInstallFinishedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.flashError(fmt.Sprintf(tr("ffmpeg install failed: %v"), msg.err))
+		return m, clearErrAfter()
+	}
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		m.flashError(tr("ffmpeg still isn't on PATH after install — see the output above"))
+		return m, clearErrAfter()
+	}
+	mt := m.meetingByID(msg.meetingID)
+	if mt == nil || !mt.CanRecord() {
+		m.flashSuccess(tr("ffmpeg installed"))
+		return m, clearErrAfter()
+	}
+	return m.startRecordingFor(mt)
 }
 
 func (m model) handleRecordingStopped(msg recordingStoppedMsg) (tea.Model, tea.Cmd) {

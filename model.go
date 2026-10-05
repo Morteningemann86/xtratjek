@@ -522,6 +522,12 @@ type model struct {
 	recorder           *AudioRecorder
 	recordingMeetingID string
 	recordStart        time.Time
+	// pendingFFmpegInstallMeetingID names the meeting "r" was trying to
+	// record when it found ffmpeg missing, while the y/n install prompt
+	// (promptInstallFFmpeg) or the install itself is in flight — so
+	// handleFFmpegInstallFinished knows which recording to resume once
+	// ffmpeg is there.
+	pendingFFmpegInstallMeetingID string
 	// meetingTextarea is the in-app editor for a meeting's Notes or
 	// Transcript (modeEditMeetingText) — ctrl+s saves, esc discards.
 	// meetingEditID/meetingEditField name which meeting and which field

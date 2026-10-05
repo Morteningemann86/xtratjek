@@ -67,3 +67,24 @@ func TestStartRecordingNoFFmpeg(t *testing.T) {
 		t.Fatal("expected an error when ffmpeg is not on PATH")
 	}
 }
+
+// TestFFmpegInstallCommandOnThisPlatform checks the invariant that holds
+// regardless of which installer happens to be on this machine's PATH,
+// rather than asserting one specific package manager — a CI runner, a
+// container and a developer's own machine can each have a different one
+// available (or none at all).
+func TestFFmpegInstallCommandOnThisPlatform(t *testing.T) {
+	name, args, ok := ffmpegInstallCommand()
+	if !ok {
+		if name != "" || args != nil {
+			t.Fatalf("ffmpegInstallCommand() ok=false but returned name=%q args=%v, want both empty", name, args)
+		}
+		t.Skip("no installer this knows how to drive is on PATH in this environment")
+	}
+	if name == "" {
+		t.Fatal("ffmpegInstallCommand() ok=true but returned an empty command name")
+	}
+	if len(args) == 0 || args[len(args)-1] != "ffmpeg" {
+		t.Fatalf("ffmpegInstallCommand() args = %v, want the last argument to be \"ffmpeg\"", args)
+	}
+}

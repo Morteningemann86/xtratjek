@@ -65,10 +65,12 @@ mv tjek ~/.local/bin/   # or anywhere on your PATH
 
 The Meetings tab's recording (`r`) shells out to `ffmpeg`, which is a
 separate install from tjek itself. Scoop pulls it in automatically as a
-dependency; every other install path needs it installed separately — see
+dependency; everywhere else, pressing `r` without it offers to install it
+there and then (with a `y`/`n` confirmation first) — see
 [Files and troubleshooting](troubleshooting.md#ffmpeg-not-found-when-recording-a-meeting)
-for the command on each platform. `tjek doctor` reports whether tjek can find
-it. Typing notes, summarizing and reviewing action items all work without it.
+for how that works and the manual command for each platform. `tjek doctor`
+reports whether tjek can find it. Typing notes, summarizing and reviewing
+action items all work without it.
 
 ## Checking a download
 

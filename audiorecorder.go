@@ -38,6 +38,65 @@ func ffmpegInstallHint() string {
 	}
 }
 
+// ffmpegInstallCommand resolves an actual command tjek can run to install
+// ffmpeg itself, rather than just naming one for a human to type — the
+// Meetings "r" key offers to run this (with a y/n confirmation first; see
+// promptInstallFFmpeg in update_meetings.go) instead of leaving the user to
+// open a separate terminal. ok is false when no installer this knows how to
+// drive is on PATH, in which case the caller falls back to
+// ffmpegInstallHint's copy-paste instructions. "ffmpeg" is always the final
+// argument, by construction, so callers can show the command in full by
+// joining name and args with spaces.
+func ffmpegInstallCommand() (name string, args []string, ok bool) {
+	switch runtime.GOOS {
+	case "darwin":
+		if !commandAvailable("brew") {
+			return "", nil, false
+		}
+		return "brew", []string{"install", "ffmpeg"}, true
+	case "windows":
+		if !commandAvailable("winget") {
+			return "", nil, false
+		}
+		// Accept flags up front so a first-run agreement prompt doesn't block
+		// a non-interactive run the same way sudo's password prompt doesn't:
+		// both still show on screen, neither silently.
+		return "winget", []string{"install", "--accept-package-agreements", "--accept-source-agreements", "ffmpeg"}, true
+	default:
+		mgr, mgrArgs, found := linuxFFmpegInstallArgs()
+		if !found {
+			return "", nil, false
+		}
+		if commandAvailable("sudo") {
+			return "sudo", append([]string{mgr}, mgrArgs...), true
+		}
+		// No sudo binary at all — most likely already root (a container), so
+		// run the package manager directly rather than failing outright.
+		return mgr, mgrArgs, true
+	}
+}
+
+// linuxFFmpegInstallArgs picks the first package manager tjek finds on
+// PATH, in the same order ffmpegInstallHint lists them, covering the large
+// majority of desktop and server Linux without needing to detect the
+// distribution itself.
+func linuxFFmpegInstallArgs() (mgr string, args []string, ok bool) {
+	switch {
+	case commandAvailable("apt-get"):
+		return "apt-get", []string{"install", "-y", "ffmpeg"}, true
+	case commandAvailable("dnf"):
+		return "dnf", []string{"install", "-y", "ffmpeg"}, true
+	case commandAvailable("pacman"):
+		return "pacman", []string{"-S", "--noconfirm", "ffmpeg"}, true
+	}
+	return "", nil, false
+}
+
+func commandAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
 // defaultFFmpegInput returns the -f/-i pair for this platform's default
 // microphone. Windows has no stable default: DirectShow devices are named by
 // the OS and vary machine to machine (discoverable with

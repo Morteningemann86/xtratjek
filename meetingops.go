@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -45,6 +46,11 @@ type suggestionsLoadedMsg struct {
 	meetingID   string
 	suggestions []meeting.Suggestion
 	err         error
+}
+
+type ffmpegInstallFinishedMsg struct {
+	meetingID string
+	err       error
 }
 
 // ── Loading ──────────────────────────────────────────────────────────────────
@@ -98,6 +104,21 @@ func stopRecordingCmd(rec *AudioRecorder, meetingID string) tea.Cmd {
 		err := rec.Stop()
 		return recordingStoppedMsg{meetingID: meetingID, err: err}
 	}
+}
+
+// ffmpegInstallCmd hands the terminal to the install command
+// ffmpegInstallCommand resolved, the same way execEditor hands it to
+// $EDITOR — so sudo's password prompt, or brew's/winget's own output,
+// appears directly in the terminal tjek is already running in rather than
+// being hidden or run blind.
+func ffmpegInstallCmd(meetingID, name string, args []string) tea.Cmd {
+	c := exec.Command(name, args...)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		return ffmpegInstallFinishedMsg{meetingID: meetingID, err: err}
+	})
 }
 
 // ── Transcription + AI pass ─────────────────────────────────────────────────
