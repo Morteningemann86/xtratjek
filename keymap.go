@@ -37,6 +37,13 @@ const (
 	// generating and reviewing action items happen.
 	ctxMeetingsList
 	ctxMeetingsDetail
+	// ctxChat is the Chat tab, live for as long as modeChatInput is (see its
+	// doc comment in model.go). Deliberately NOT part of ctxAll: every key
+	// that would otherwise be global (u undo, q quit, the 1-9 digit tab
+	// jump, …) is ordinary text in a chat message instead, so listing them
+	// here would advertise shortcuts that do not actually fire — see
+	// updateChatInput.
+	ctxChat
 
 	// ctxAll marks the global bindings (navigation, help, undo, quit) that are
 	// live in every context.
@@ -63,7 +70,7 @@ type binding struct {
 // these. Navigation and App collect the global bindings.
 var helpSectionOrder = []string{
 	secNavigation, secTasks, secDetail, secTagsProjects,
-	secBoard, secCalendar, secStats, secSettings, secMeetings, secApp,
+	secBoard, secCalendar, secStats, secSettings, secMeetings, secChat, secApp,
 }
 
 const (
@@ -77,6 +84,7 @@ const (
 	secStats        = "Stats"
 	secSettings     = "Settings"
 	secMeetings     = "Meetings"
+	secChat         = "Chat"
 	secApp          = "App"
 )
 
@@ -94,7 +102,7 @@ var keymap = []binding{
 	// enter has no global meaning — each context defines its own (open details,
 	// edit field, activate, cycle) — so it is registered per context, not here.
 	{ctxAll, "esc", "back", "go back", secNavigation, false, false},
-	{ctxAll, "tab / shift+tab / 1-8", "tabs", "switch tabs (forward / back / direct)", secNavigation, false, false},
+	{ctxAll, "tab / shift+tab / 1-9", "tabs", "switch tabs (forward / back / direct)", secNavigation, false, false},
 	{ctxAll, "?", "help", "toggle this help", secNavigation, false, false},
 	{ctxAll, "ctrl+k", "palette", "command palette: find any action by name", secNavigation, false, false},
 
@@ -202,6 +210,12 @@ var keymap = []binding{
 	{ctxMeetingsDetail, "x", "delete", "reject the focused action item", secMeetings, true, true},
 	{ctxMeetingsDetail, "e", "editsuggestion", "edit the focused action item (quick-add syntax)", secMeetings, false, false},
 
+	// ── Chat ─────────────────────────────────────────────────────────────
+	{ctxChat, "enter", "chatsend", "send message", secChat, true, true},
+	{ctxChat, "y / n", "chatconfirm", "confirm / decline a proposed action", secChat, true, true},
+	{ctxChat, "pgup/pgdn", "chatscroll", "scroll the conversation", secChat, false, false},
+	{ctxChat, "tab / shift+tab", "chattabs", "switch tabs", secChat, true, false},
+
 	// ── App (global) ─────────────────────────────────────────────────────
 	{ctxAll, "u", "undo", "undo last change", secApp, false, false},
 	{ctxAll, "q", "quit", "quit", secApp, false, false},
@@ -242,6 +256,8 @@ func (m model) currentKeyCtx() keyCtx {
 			return ctxMeetingsDetail
 		}
 		return ctxMeetingsList
+	case tabChat:
+		return ctxChat
 	}
 	return ctxTasksList
 }

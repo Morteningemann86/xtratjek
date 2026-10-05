@@ -55,6 +55,64 @@ type TextProvider interface {
 	// one when nothing existing fits, the same way an existing project
 	// grouping is also unassigned when nothing fits.
 	ExtractActionItems(ctx context.Context, transcript, summary string, existingProjects, existingTags []string) ([]Suggestion, error)
+	// Chat drives the Chat tab's tool-calling loop (chatops.go, in the main
+	// package): one exchange against history under system, offering tools
+	// for the model to call instead of answering outright. A ChatResult
+	// with ToolCalls set means "run these and call Chat again with their
+	// results appended to history as "tool" turns before trying again" —
+	// the caller owns that loop, not this method, so a single call here is
+	// always exactly one request to the provider's API.
+	Chat(ctx context.Context, system string, history []Turn, tools []ToolSpec) (ChatResult, error)
+}
+
+// ToolSpec describes one function the model may call mid-conversation,
+// translated to each provider's own wire shape for declaring tools
+// (OpenAI's "function", Anthropic's "tool", Gemini's "function_declaration").
+type ToolSpec struct {
+	Name        string
+	Description string
+	// Parameters is a JSON Schema object (the same shape every provider's
+	// tool-calling API expects), e.g. {"type":"object","properties":{...}}.
+	Parameters map[string]any
+}
+
+// ToolCall is one invocation the model asked for. Arguments is already
+// decoded from whatever wire shape the provider used (a JSON string for
+// OpenAI/Anthropic, a native object for Gemini) so callers never parse JSON
+// themselves.
+type ToolCall struct {
+	// ID correlates a ToolCall to the "tool" Turn answering it. OpenAI and
+	// Anthropic assign one; Gemini does not, so the caller synthesizes one
+	// (geminiProvider.go) — either way every ToolCall has a non-empty ID by
+	// the time Chat returns it.
+	ID        string
+	Name      string
+	Arguments map[string]any
+}
+
+// Turn is one entry in a Chat conversation, provider-agnostic. A "tool" role
+// turn is a previously-requested ToolCall's result being handed back,
+// correlated by ToolCallID — every provider has its own idea of where that
+// belongs on the wire (OpenAI: its own "tool" role; Anthropic: a
+// tool_result block inside a user message; Gemini: a functionResponse
+// part), but callers of Chat never deal with that, only with Turn.
+type Turn struct {
+	Role    string // "user" | "assistant" | "tool"
+	Content string
+	// ToolCalls is set on an assistant Turn that asked for tools to run
+	// instead of answering in Content.
+	ToolCalls []ToolCall
+	// ToolCallID is set on a "tool" Turn, naming which ToolCall it answers.
+	ToolCallID string
+}
+
+// ChatResult is one provider response to a Chat call: either Text (the
+// model answered) or ToolCalls (the model wants these run first) — never
+// both, matching how every provider's own API treats the two as mutually
+// exclusive outcomes of a single turn.
+type ChatResult struct {
+	Text      string
+	ToolCalls []ToolCall
 }
 
 // TranscriptionProvider turns a recorded audio file into text. Only OpenAI

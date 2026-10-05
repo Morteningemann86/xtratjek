@@ -695,6 +695,115 @@ for it from this tab.
   the "ffmpeg missing" error path); the ordering, no-key, and per-chunk-
   failure logic that doesn't need a real recording is covered directly.
 
+## Chat
+
+Tab 9. A conversational screen for asking about current tasks/projects/
+meetings in plain language, and optionally having one created/completed/
+edited — through the same AI provider Meetings already configures
+(`aiprovider.TextProvider`), but a different request shape: tool-calling
+rather than summarization.
+
+- **Why tool-calling, not a context dump.** The first design stuffed a
+  snapshot of every task/project/meeting into the prompt on every turn, the
+  same style `Summarize` already uses for a transcript. That works for a
+  one-shot meeting summary; it does not for a chat screen, because the
+  snapshot would be re-sent on *every message in the conversation* — cost
+  scales with *(amount of data) × (conversation length)*, not just data
+  size. Instead the model gets a handful of tools (`chattools.go`) and
+  fetches only what a given question needs: a plain "hi" costs the system
+  prompt and tool schemas alone; a specific question costs one or two
+  local lookups, not a dump of the whole database.
+- **`aiprovider.TextProvider.Chat`** is the multi-turn, tool-calling sibling
+  of `Summarize`/`ExtractActionItems`'s one-shot `call`. Three new
+  provider-agnostic types in `aiprovider/provider.go` carry a conversation
+  across the boundary: `ToolSpec` (a tool's name/description/JSON-Schema
+  parameters), `ToolCall` (what the model asked to run, with a non-empty
+  `ID` always — OpenAI/Anthropic assign one, `GeminiProvider` synthesizes
+  one as `"name#index"` since Gemini correlates a `functionResponse` back
+  to its `functionCall` by name, not an id), and `Turn` (`"user"` |
+  `"assistant"` | `"tool"`, the last correlated to a `ToolCall` by
+  `ToolCallID`). Each provider's `Chat` is `call` reworked for this: same
+  request/response plumbing, but Anthropic's tool result rides in a *user*
+  message as a `tool_result` block (it has no `"tool"` role of its own),
+  while OpenAI's maps directly onto its own `"tool"` role.
+- **The tool set (`chattools.go`)** is read tools the loop runs
+  automatically (`list_projects`, `list_tasks`, `get_task`,
+  `list_meetings`, `get_meeting` — pure, synchronous, no network, filtered
+  out of a `chatSnapshot`) and action tools it never runs automatically
+  (`create_task`, `complete_task`, `edit_task` — see below).
+  `aiprovider.ChatSystemPrompt` is the one piece of prompt engineering this
+  design leans on: the model is told it has no built-in knowledge of the
+  user's data and must call a tool rather than invent a task/project/
+  meeting name.
+- **The reply loop (`chatops.go`'s `chatReplyCmd`)** runs entirely inside
+  one `tea.Cmd` closure, the same shape `runAIPassCmd` already uses for two
+  sequential calls: call the provider, and if it asks for tools, run the
+  read ones locally and call again, looping (capped at `maxChatToolHops`)
+  until a plain-text answer comes back or the model asks for an action
+  tool — at which point the loop stops immediately rather than running it.
+  It only ever touches a `chatSnapshot` (plain value copies of
+  todos/meetings/projects, taken once before the `tea.Cmd` is built) — never
+  live `model.Store`/`model.meetings`, which the goroutine this runs on has
+  no business reading while the Update loop might be mutating them.
+- **Confirming an action needs no second call to the provider.** An action
+  tool call surfaces as `chatPendingAction`, rendered as a y/n line
+  (`describeChatAction`) the same inline-confirmation shape the ffmpeg
+  install prompt uses. Because these three mutations are simple and their
+  outcome is fully known once applied, y/n is handled entirely in Go
+  (`update_chat.go`'s `applyChatAction`) — `create_task` mirrors
+  `acceptSuggestion`'s shape (`pushUndo`, `add`, `markModified`);
+  `complete_task`/`edit_task` mirror any other in-place task edit
+  (`m.get(id)` + `pushUndo` + mutate + `markModified`). A stale task ID
+  (deleted since the model proposed acting on it) degrades to a plain
+  "couldn't find that task" reply, never a crash. One trade-off this
+  creates: if the model's reply would have included prose alongside the
+  action proposal, that prose is dropped — a tool-calling turn is either
+  calls or text, never both, so the loop stops at the first action call
+  rather than trying to recover accompanying text.
+- **`modeChatInput`** is why Chat is dispatched differently from every
+  other tab. Its textarea has to own every keystroke the whole time the
+  tab is open — including letters and digits that are global shortcuts
+  everywhere else (`q` quit, `u` undo, `1`-`9` the tab-jump digits) — not
+  just while some explicit "start editing" key is held, the way
+  `modeEditMeetingText`'s textarea only captures keys between `n`/`T` and
+  `ctrl+s`/`esc`. `switchTab` sets the mode on entry and clears it on exit,
+  and dispatch routes it the same way it routes `modeEditMeetingText` —
+  before `resolveKeyOverride` and before any tab's own key switch ever see
+  the keystroke. `tab`/`shift+tab` and y/n-when-pending are the only keys
+  `updateChatInput` reserves for itself; everything else is ordinary
+  textarea editing, same split `updateEditMeetingText` makes.
+- **Storage (`storage_chat.go`, migration 014)** is deliberately just
+  `role`+`content` — one continuous thread, oldest first, loaded once at
+  startup like meetings are. The tool-call scaffolding a reply is computed
+  through never persists: each new message rebuilds `history` fresh from
+  this plain-text log, so there is no "resume an in-flight tool loop after
+  a restart" problem to solve — if the app closes mid-confirmation, nothing
+  was ever applied, so nothing is lost but the one pending question.
+
+### Not done yet
+
+- **No "clear history" command.** One continuous thread was the simplest
+  fit for "ask about my stuff"; a command to start a fresh thread would be
+  a natural, low-risk follow-up if the single running log ever becomes
+  unwieldy.
+- **No prose alongside a proposed action in the same turn** — see the
+  trade-off noted above. Recovering it would need letting the loop continue
+  past an action call and synthesizing a combined message, which is more
+  machinery than three simple mutations currently justify.
+- **Gemini's tool-calling wire format is implemented against its published
+  function-calling docs, not exercised against a live Gemini account** —
+  `aiprovider`'s own tests mock the HTTP layer the same way the other two
+  providers' do, so the request/response *shapes* are covered, but nobody
+  has yet pointed a real `GEMINI_API_KEY` at the Chat tab to confirm the
+  account-side behavior matches the docs.
+- **The full multi-hop loop (read tool → result → model continues) is
+  covered at the provider level (`aiprovider`'s `*ChatRoundTripsToolResult`
+  tests) and the application level with the loop simulated via direct
+  `chatReplyMsg` injection (`update_chat_test.go`, the same "drive the
+  message, not the network" rationale `TestScriptAddMeetingAndRunReview`
+  documents) — not end-to-end against a real provider deciding on its own
+  to call a tool, chain a second one, and then answer.**
+
 ## Terminals
 
 - **Keyboard (`input.go`).** Off Windows the files are stubs. On Windows,

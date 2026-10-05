@@ -16,12 +16,7 @@ func TestOpenAISummarize(t *testing.T) {
 		if got := r.Header.Get("Authorization"); got != "Bearer test-key" {
 			t.Errorf("Authorization header = %q", got)
 		}
-		resp := openAIChatResponse{}
-		resp.Choices = []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		}{{}}
+		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
 		resp.Choices[0].Message.Content = "  The summary.  "
 		json.NewEncoder(w).Encode(resp)
 	}))
@@ -39,12 +34,7 @@ func TestOpenAISummarize(t *testing.T) {
 
 func TestOpenAIExtractActionItems(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := openAIChatResponse{}
-		resp.Choices = []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		}{{}}
+		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
 		resp.Choices[0].Message.Content = `[{"title":"Follow up with legal","project":"","tags":[],"priority":"m","due":""}]`
 		json.NewEncoder(w).Encode(resp)
 	}))
@@ -129,5 +119,104 @@ func TestOpenAIAPIError(t *testing.T) {
 	_, err := p.Summarize(context.Background(), "x")
 	if err == nil || !strings.Contains(err.Error(), "rate limited") {
 		t.Fatalf("err = %v, want it to mention rate limited", err)
+	}
+}
+
+func TestOpenAIChatText(t *testing.T) {
+	var gotReq openAIChatRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&gotReq); err != nil {
+			t.Fatal(err)
+		}
+		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
+		resp.Choices[0].Message.Content = "  hi there  "
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	p := &OpenAIProvider{APIKey: "test-key", BaseURL: srv.URL}
+	got, err := p.Chat(context.Background(), "system prompt", []Turn{{Role: "user", Content: "hello"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != "hi there" || len(got.ToolCalls) != 0 {
+		t.Fatalf("Chat() = %+v", got)
+	}
+	if gotReq.Messages[0].Role != "system" || gotReq.Messages[0].Content != "system prompt" {
+		t.Fatalf("system message = %+v", gotReq.Messages[0])
+	}
+	if gotReq.Messages[1].Role != "user" || gotReq.Messages[1].Content != "hello" {
+		t.Fatalf("user message = %+v", gotReq.Messages[1])
+	}
+}
+
+func TestOpenAIChatToolCall(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
+		tc := openAIToolCall{ID: "call_1", Type: "function"}
+		tc.Function.Name = "list_tasks"
+		tc.Function.Arguments = `{"project":"Work"}`
+		resp.Choices[0].Message.ToolCalls = []openAIToolCall{tc}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	p := &OpenAIProvider{APIKey: "test-key", BaseURL: srv.URL}
+	tools := []ToolSpec{{Name: "list_tasks", Description: "list tasks", Parameters: map[string]any{"type": "object"}}}
+	got, err := p.Chat(context.Background(), "system", []Turn{{Role: "user", Content: "what's open in Work?"}}, tools)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != "" || len(got.ToolCalls) != 1 {
+		t.Fatalf("Chat() = %+v", got)
+	}
+	call := got.ToolCalls[0]
+	if call.ID != "call_1" || call.Name != "list_tasks" || call.Arguments["project"] != "Work" {
+		t.Fatalf("ToolCalls[0] = %+v", call)
+	}
+}
+
+// TestOpenAIChatRoundTripsToolResult drives a second Chat call carrying the
+// first call's assistant tool-call Turn plus its "tool" result Turn, the
+// shape chatReplyCmd (main package) builds hop by hop — this is the part of
+// openAITurnsToMessages that matters: the assistant message must carry
+// tool_calls back out, or OpenAI's API rejects the orphaned tool message
+// that follows it.
+func TestOpenAIChatRoundTripsToolResult(t *testing.T) {
+	var gotReq openAIChatRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&gotReq); err != nil {
+			t.Fatal(err)
+		}
+		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
+		resp.Choices[0].Message.Content = "You have one open task."
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	history := []Turn{
+		{Role: "user", Content: "what's open?"},
+		{Role: "assistant", ToolCalls: []ToolCall{{ID: "call_1", Name: "list_tasks", Arguments: map[string]any{}}}},
+		{Role: "tool", ToolCallID: "call_1", Content: `[{"id":"1","title":"Ship report"}]`},
+	}
+	p := &OpenAIProvider{APIKey: "test-key", BaseURL: srv.URL}
+	got, err := p.Chat(context.Background(), "system", history, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != "You have one open task." {
+		t.Fatalf("Chat() = %+v", got)
+	}
+	// system, user, assistant(tool_calls), tool
+	if len(gotReq.Messages) != 4 {
+		t.Fatalf("len(Messages) = %d, want 4: %+v", len(gotReq.Messages), gotReq.Messages)
+	}
+	assistantMsg := gotReq.Messages[2]
+	if len(assistantMsg.ToolCalls) != 1 || assistantMsg.ToolCalls[0].ID != "call_1" {
+		t.Fatalf("assistant message tool_calls = %+v", assistantMsg.ToolCalls)
+	}
+	toolMsg := gotReq.Messages[3]
+	if toolMsg.Role != "tool" || toolMsg.ToolCallID != "call_1" {
+		t.Fatalf("tool message = %+v", toolMsg)
 	}
 }

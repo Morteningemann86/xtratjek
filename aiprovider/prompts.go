@@ -52,6 +52,28 @@ func extractActionItemsPrompt(transcript, summary string, existingProjects, exis
 	return b.String()
 }
 
+// ChatSystemPrompt is the Chat tab's system prompt (chatops.go, main
+// package). Unlike summarizePrompt/extractActionItemsPrompt it carries no
+// data of its own — the model has no built-in knowledge of the user's
+// tasks/projects/meetings and is told to always use a tool rather than
+// guess, which is the one piece of prompt engineering the tool-calling
+// design (as opposed to stuffing a snapshot into every turn) actually
+// depends on. today lets it reason about relative dates ("what's due this
+// week") without a tool round trip just to learn what day it is.
+func ChatSystemPrompt(today string) string {
+	return "You are the assistant inside tjek, a terminal task manager. The user will ask about their " +
+		"tasks, projects, and meetings. You have NO built-in knowledge of any of it — every fact about a " +
+		"specific task, project, or meeting must come from calling a tool first. Never invent or guess a " +
+		"task title, project name, meeting, or ID; if a tool returns nothing relevant, say so plainly instead " +
+		"of making something up.\n\n" +
+		"Keep answers short and to the point — this is a terminal UI, not a chat app with room to scroll.\n\n" +
+		"If the user asks you to create, complete, or edit a task, call the matching tool directly — the app " +
+		"itself will show the user a confirmation before anything actually happens, so you do not need to ask " +
+		"for confirmation yourself in text, and you should not add extra explanation alongside that call; a " +
+		"follow-up question can wait for their answer.\n\n" +
+		"Today's date is " + today + "."
+}
+
 func checkTranscriptLen(transcript string) error {
 	if len(transcript) > maxTranscriptChars {
 		return fmt.Errorf("%w (got %d)", errTranscriptTooLong, len(transcript))

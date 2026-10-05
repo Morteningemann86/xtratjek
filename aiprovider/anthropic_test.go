@@ -94,3 +94,106 @@ func TestAnthropicName(t *testing.T) {
 		t.Fatal("Name() mismatch")
 	}
 }
+
+func TestAnthropicChatText(t *testing.T) {
+	var gotReq anthropicRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&gotReq); err != nil {
+			t.Fatal(err)
+		}
+		json.NewEncoder(w).Encode(anthropicResponse{
+			Content: []anthropicContentBlock{{Type: "text", Text: "hi there"}},
+		})
+	}))
+	defer srv.Close()
+
+	p := &AnthropicProvider{APIKey: "test-key", BaseURL: srv.URL}
+	got, err := p.Chat(context.Background(), "system prompt", []Turn{{Role: "user", Content: "hello"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != "hi there" || len(got.ToolCalls) != 0 {
+		t.Fatalf("Chat() = %+v", got)
+	}
+	if gotReq.System != "system prompt" {
+		t.Fatalf("System = %q", gotReq.System)
+	}
+	if len(gotReq.Messages) != 1 || gotReq.Messages[0].Role != "user" {
+		t.Fatalf("Messages = %+v", gotReq.Messages)
+	}
+}
+
+func TestAnthropicChatToolUse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(anthropicResponse{
+			Content: []anthropicContentBlock{{Type: "tool_use", ID: "toolu_1", Name: "list_tasks", Input: map[string]any{"project": "Work"}}},
+		})
+	}))
+	defer srv.Close()
+
+	p := &AnthropicProvider{APIKey: "test-key", BaseURL: srv.URL}
+	tools := []ToolSpec{{Name: "list_tasks", Description: "list tasks", Parameters: map[string]any{"type": "object"}}}
+	got, err := p.Chat(context.Background(), "system", []Turn{{Role: "user", Content: "what's open in Work?"}}, tools)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != "" || len(got.ToolCalls) != 1 {
+		t.Fatalf("Chat() = %+v", got)
+	}
+	call := got.ToolCalls[0]
+	if call.ID != "toolu_1" || call.Name != "list_tasks" || call.Arguments["project"] != "Work" {
+		t.Fatalf("ToolCalls[0] = %+v", call)
+	}
+}
+
+// TestAnthropicChatRoundTripsToolResult checks the shape anthropicTurnsToMessages
+// builds for a resumed hop: the assistant's prior tool_use is echoed back as
+// an assistant message with a tool_use block, and the tool's result rides in
+// a *user* message as a tool_result block — Anthropic has no "tool" role of
+// its own, unlike OpenAI.
+func TestAnthropicChatRoundTripsToolResult(t *testing.T) {
+	var gotReq anthropicRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&gotReq); err != nil {
+			t.Fatal(err)
+		}
+		json.NewEncoder(w).Encode(anthropicResponse{
+			Content: []anthropicContentBlock{{Type: "text", Text: "You have one open task."}},
+		})
+	}))
+	defer srv.Close()
+
+	history := []Turn{
+		{Role: "user", Content: "what's open?"},
+		{Role: "assistant", ToolCalls: []ToolCall{{ID: "toolu_1", Name: "list_tasks", Arguments: map[string]any{}}}},
+		{Role: "tool", ToolCallID: "toolu_1", Content: `[{"id":"1","title":"Ship report"}]`},
+	}
+	p := &AnthropicProvider{APIKey: "test-key", BaseURL: srv.URL}
+	got, err := p.Chat(context.Background(), "system", history, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != "You have one open task." {
+		t.Fatalf("Chat() = %+v", got)
+	}
+	if len(gotReq.Messages) != 3 {
+		t.Fatalf("len(Messages) = %d, want 3: %+v", len(gotReq.Messages), gotReq.Messages)
+	}
+	var assistantBlocks []anthropicContentBlock
+	if err := json.Unmarshal(gotReq.Messages[1].Content, &assistantBlocks); err != nil {
+		t.Fatal(err)
+	}
+	if len(assistantBlocks) != 1 || assistantBlocks[0].Type != "tool_use" || assistantBlocks[0].ID != "toolu_1" {
+		t.Fatalf("assistant message blocks = %+v", assistantBlocks)
+	}
+	if gotReq.Messages[2].Role != "user" {
+		t.Fatalf("tool result message role = %q, want user", gotReq.Messages[2].Role)
+	}
+	var resultBlocks []anthropicContentBlock
+	if err := json.Unmarshal(gotReq.Messages[2].Content, &resultBlocks); err != nil {
+		t.Fatal(err)
+	}
+	if len(resultBlocks) != 1 || resultBlocks[0].Type != "tool_result" || resultBlocks[0].ToolUseID != "toolu_1" {
+		t.Fatalf("tool result message blocks = %+v", resultBlocks)
+	}
+}

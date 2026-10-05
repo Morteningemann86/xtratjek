@@ -49,7 +49,7 @@ func (m model) updateMeetingsDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.openPalette()
 	case "u":
 		return m, m.performUndo()
-	case "1", "2", "3", "4", "5", "6", "7", "8":
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		if t, ok := m.tabForNumberKey(key.String()); ok {
 			m.switchTab(t)
 		}

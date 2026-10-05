@@ -878,10 +878,10 @@ func TestSelectedTabNeverTruncated(t *testing.T) {
 		width       int
 		want        string
 	}{
-		{tabCalendar, 94, "2 Calendar"},
-		{tabSettings, 94, "7 Settings"},
-		{tabCalendar, 88, "2 Cal "},
-		{tabSettings, 88, "7 Setup"},
+		{tabCalendar, 120, "2 Calendar"},
+		{tabSettings, 120, "7 Settings"},
+		{tabCalendar, 97, "2 Cal "},
+		{tabSettings, 97, "7 Setup"},
 	}
 
 	for _, tc := range cases {
@@ -1137,9 +1137,9 @@ func TestTabBarFitsTheWidthItIsGiven(t *testing.T) {
 // language is stable in can be a single column wide in another; there is no
 // one width that lands all three in it at once).
 var tabBarShortLabelStableWidth = map[language]int{
-	langEN: 88,
-	langDA: 88,
-	langDE: 90,
+	langEN: 97,
+	langDA: 97,
+	langDE: 99,
 }
 
 func TestTabBarKeepsItsLabelsAcrossTabs(t *testing.T) {
@@ -1176,7 +1176,11 @@ func TestTabBarKeepsItsLabelsAcrossTabs(t *testing.T) {
 func TestHeaderShowsTheHelpKey(t *testing.T) {
 	t.Cleanup(func() { applyLang(string(langEN)) })
 	for _, lang := range availableLanguages {
-		for w := 55; w <= 200; w++ {
+		// 57, not 55: a 9th tab (Chat) means the bare-digit tab bar alone
+		// needs one column more at the floor than it did at 8 tabs — see
+		// TestTabBarKeepsItsLabelsAcrossTabs's tabBarShortLabelStableWidth
+		// for the same kind of per-tab-count recalibration.
+		for w := 57; w <= 200; w++ {
 			m := modelWithTasks(t, todo.New("alpha"))
 			applyLang(string(lang))
 			m.termWidth, m.termHeight = w, 20

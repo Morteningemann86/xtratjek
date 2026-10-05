@@ -248,6 +248,8 @@ func (m model) listPanelTitle() string {
 			}
 		}
 		return tr("Meetings")
+	case tabChat:
+		return tr("Chat")
 	}
 	return tr("Overview")
 }
@@ -654,7 +656,7 @@ func (m model) buildFooterContent(w int) string {
 
 func (m model) footerContentFor(w int) string {
 	switch m.mode {
-	case modeNormal:
+	case modeNormal, modeChatInput:
 		hints := m.renderKeyHints(w)
 		if t := m.runningTask(); t != nil {
 			elapsed := ""
@@ -1062,6 +1064,9 @@ func (m model) buildListContent(w, outerH int) string {
 	}
 	if m.tab == tabMeetings {
 		return m.buildMeetingsContent(w, outerH)
+	}
+	if m.tab == tabChat {
+		return m.buildChatContent(w, outerH)
 	}
 	if m.sideBySide() {
 		return m.buildSideBySide(w, outerH)
@@ -2231,6 +2236,7 @@ func (m model) renderTabs(avail int) string {
 		tabStatsActiveStyle,
 		tabSettingsActiveStyle,
 		tabMeetingsActiveStyle,
+		tabChatActiveStyle,
 	}
 	inactiveStyles := [numTabs]lipgloss.Style{
 		tabTasksInactiveStyle,
@@ -2241,12 +2247,13 @@ func (m model) renderTabs(avail int) string {
 		tabStatsInactiveStyle,
 		tabSettingsInactiveStyle,
 		tabMeetingsInactiveStyle,
+		tabChatInactiveStyle,
 	}
 	// The selected tab renders as a solid colored pill. Unselected tabs use
 	// the per-tab color as the foreground so each tab keeps its identity
 	// without a background block.
-	full := [numTabs]string{tr("1 Tasks"), tr("2 Calendar"), tr("3 Tags"), tr("4 Projects"), tr("5 Board"), tr("6 Stats"), tr("7 Settings"), tr("8 Meetings")}
-	nums := [numTabs]string{"1", "2", "3", "4", "5", "6", "7", "8"}
+	full := [numTabs]string{tr("1 Tasks"), tr("2 Calendar"), tr("3 Tags"), tr("4 Projects"), tr("5 Board"), tr("6 Stats"), tr("7 Settings"), tr("8 Meetings"), tr("9 Chat")}
+	nums := [numTabs]string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}
 
 	// abbr is the curated short label, one per tab, not a mechanical cut of the
 	// full one. Clipping to three letters produced "5 Boa", "6 Sta", "7 Set" —
@@ -2369,6 +2376,8 @@ func (m model) renderListContent() string {
 		return m.renderSettingsList()
 	case tabMeetings:
 		return m.renderMeetingsList()
+	case tabChat:
+		return m.renderChatList()
 	}
 	return ""
 }

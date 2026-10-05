@@ -232,6 +232,8 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, clearErrAfter()
 	case editorFinishedMsg:
 		return m.handleEditorFinished(msg)
+	case chatReplyMsg:
+		return m.handleChatReply(msg)
 	case segmentClosedMsg:
 		return m.handleSegmentClosed(msg)
 	case segmentTranscribedMsg:
@@ -438,6 +440,8 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newModel, cmd = m.updateEditSuggestion(msg)
 	case modeEditMeetingText:
 		newModel, cmd = m.updateEditMeetingText(msg)
+	case modeChatInput:
+		newModel, cmd = m.updateChatInput(msg)
 	case modeAddSubtask:
 		newModel, cmd = m.updateAddSubtask(msg)
 	case modeEditSubtask:
@@ -861,7 +865,7 @@ func (m model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.startEditMeetingText("notes")
 			}
 
-		case "1", "2", "3", "4", "5", "6", "7", "8":
+		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			if t, ok := m.tabForNumberKey(key.String()); ok {
 				m.switchTab(t)
 			}
@@ -1465,6 +1469,8 @@ func tabForNumberKeyRaw(key string) (tab, bool) {
 		return tabSettings, true
 	case "8":
 		return tabMeetings, true
+	case "9":
+		return tabChat, true
 	}
 	return tabTasks, false
 }
@@ -1526,6 +1532,15 @@ func (m *model) switchTab(t tab) {
 		detailTaskID: m.detailTaskID,
 		detailStack:  m.detailStack,
 	}
+	// The Chat tab's textarea needs to own every keystroke the whole time
+	// it's on screen (modeChatInput's doc comment in model.go), so entering
+	// or leaving it means entering or leaving that mode here, rather than
+	// through some explicit "start editing" key the way every other
+	// in-app text editor works.
+	if m.tab == tabChat {
+		m.chatInput.Blur()
+		m.mode = modeNormal
+	}
 	m.tab = t
 	v := m.tabViews[t]
 	m.cursor = v.cursor
@@ -1534,6 +1549,10 @@ func (m *model) switchTab(t tab) {
 	m.searchQuery = v.search
 	m.detailTaskID = v.detailTaskID
 	m.detailStack = v.detailStack
+	if t == tabChat {
+		m.mode = modeChatInput
+		m.chatInput.Focus()
+	}
 
 	m.invalidateDetailCache()
 	m.markFilterDirty()

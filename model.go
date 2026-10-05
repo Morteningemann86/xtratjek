@@ -32,9 +32,10 @@ const (
 	tabStats
 	tabSettings
 	tabMeetings
+	tabChat
 )
 
-const numTabs = 8
+const numTabs = 9
 
 // Stable row IDs for the Settings tab. The renderer draws them in groups; their
 // numeric order remains independent of their visual navigation order.
@@ -174,6 +175,17 @@ const (
 	// meetingEditField. Both ctrl+s and esc save; esc never discards, so it
 	// can't be used to lose a note by reflex. No $EDITOR round trip.
 	modeEditMeetingText
+	// modeChatInput is active for as long as the Chat tab is (switchTab sets
+	// and clears it) — unlike every other mode above, it's not a transient
+	// excursion from modeNormal, because the Chat tab's textarea needs to
+	// capture ordinary typing (including letters and digits that are global
+	// shortcuts everywhere else — "q", "u", "1".."9", …) the whole time it's
+	// on screen, not just while some explicit "start editing" key is held.
+	// Routing it in dispatch's mode switch, the same as modeEditMeetingText,
+	// keeps resolveKeyOverride and every tab's own key switch (updateList's
+	// "q"/"u"/digit handling included) from ever seeing a keystroke meant
+	// for the message being typed.
+	modeChatInput
 )
 
 // untaggedKey is a sentinel used both as the Tags-tab virtual row for tasks
@@ -543,6 +555,33 @@ type model struct {
 	meetingTextarea  textarea.Model
 	meetingEditID    string
 	meetingEditField string
+
+	// ── Chat tab ─────────────────────────────────────────────────────────
+	// chatMessages is the persisted conversation (storage_chat.go), oldest
+	// first, loaded once at startup and appended to as messages are sent/
+	// received — never the tool-call scaffolding a reply is computed
+	// through (chatops.go), which never persists.
+	chatMessages []chatMessage
+	chatInput    textarea.Model
+	// chatScrollOffset is lines held back from the bottom of the
+	// conversation — 0 means "show the latest", matching fitSettingsPane's
+	// selectedLine convention (view_chat.go).
+	chatScrollOffset int
+	// chatLoading is true while chatReplyCmd is in flight, so the view can
+	// show a "thinking…" cue instead of silence for however long the
+	// network call takes.
+	chatLoading bool
+	// chatPendingAction is a proposed create_task/complete_task/edit_task
+	// tool call awaiting the user's y/n (chatReplyMsg.pendingAction) — nil
+	// the rest of the time. See chatops.go's package comment for why
+	// confirming/declining never needs a second call to the provider.
+	chatPendingAction *aiprovider.ToolCall
+	// chatPendingActionLabel is describeChatAction's rendering of
+	// chatPendingAction, computed once when it arrives rather than at every
+	// render — it needs a chatSnapshot to resolve a task ID to a title, and
+	// rebuilding that on every View() would be wasted work for a label that
+	// cannot change while the prompt is on screen.
+	chatPendingActionLabel string
 }
 
 func initialModel(repo Repository) model {
@@ -569,6 +608,11 @@ func initialModel(repo Repository) model {
 
 	meetingTA := textarea.New()
 	meetingTA.ShowLineNumbers = false
+
+	chatTA := textarea.New()
+	chatTA.ShowLineNumbers = false
+	chatTA.Placeholder = tr("Ask about your tasks, projects, or meetings…")
+	chatTA.SetHeight(chatInputHeight)
 
 	todos, err := repo.Load()
 	errMsg := ""
@@ -625,6 +669,7 @@ func initialModel(repo Repository) model {
 		tagTabSearchInput: tagTabSearch,
 		paletteInput:      pal,
 		meetingTextarea:   meetingTA,
+		chatInput:         chatTA,
 		mode:              modeNormal,
 		pane:              paneList,
 		tab:               tabTasks,
@@ -715,6 +760,11 @@ func initialModel(repo Repository) model {
 		for i := range loaded {
 			m.meetings[i] = &loaded[i]
 		}
+	}
+	// Chat history loads eagerly too, same cost class and same "non-fatal,
+	// just starts empty" failure handling as meetings above.
+	if msgs, err := loadChatMessages(); err == nil {
+		m.chatMessages = msgs
 	}
 	m.calendar.selected = startOfDay(time.Now())
 	m.reminderAt, m.reminderOn = storedReminder(settings)

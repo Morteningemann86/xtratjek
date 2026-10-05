@@ -890,12 +890,12 @@ func TestScriptShiftTabWalksTabsBackwards(t *testing.T) {
 	m := modelWithTasks(t, todo.New("write the report"))
 
 	m = sendKey(t, m, "shift+tab")
-	if m.tab != tabMeetings {
-		t.Fatalf("shift+tab from Tasks: tab = %v, want tabMeetings (wrap backwards)", m.tab)
+	if m.tab != tabChat {
+		t.Fatalf("shift+tab from Tasks: tab = %v, want tabChat (wrap backwards)", m.tab)
 	}
 	m = sendKey(t, m, "tab")
 	if m.tab != tabTasks {
-		t.Fatalf("tab from Meetings: tab = %v, want tabTasks", m.tab)
+		t.Fatalf("tab from Chat: tab = %v, want tabTasks", m.tab)
 	}
 
 	// …and from inside the detail pane, where only forward tab used to work.
@@ -904,8 +904,8 @@ func TestScriptShiftTabWalksTabsBackwards(t *testing.T) {
 		t.Fatalf("enter on a task: pane = %v, want paneDetail", m.pane)
 	}
 	m = sendKey(t, m, "shift+tab")
-	if m.tab != tabMeetings {
-		t.Fatalf("shift+tab from the detail pane: tab = %v, want tabMeetings", m.tab)
+	if m.tab != tabChat {
+		t.Fatalf("shift+tab from the detail pane: tab = %v, want tabChat", m.tab)
 	}
 }
 

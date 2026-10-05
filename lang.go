@@ -162,9 +162,9 @@ var weekdayInitials = map[language][7]rune{
 // internally stable, so a longer word here fails the build instead of turning
 // the bar into bare digits.
 var tabShortLabels = map[language][numTabs]string{
-	langEN: {"1 Tasks", "2 Cal", "3 Tags", "4 Proj", "5 Board", "6 Stats", "7 Setup", "8 Meet"},
-	langDA: {"1 Opgaver", "2 Kal", "3 Mærk", "4 Proj", "5 Tavle", "6 Stat", "7 Indst", "8 Møde"},
-	langDE: {"1 Aufg.", "2 Kal", "3 Tags", "4 Proj", "5 Board", "6 Stat.", "7 Einst.", "8 Meet."},
+	langEN: {"1 Tasks", "2 Cal", "3 Tags", "4 Proj", "5 Board", "6 Stats", "7 Setup", "8 Meet", "9 Chat"},
+	langDA: {"1 Opgaver", "2 Kal", "3 Mærk", "4 Proj", "5 Tavle", "6 Stat", "7 Indst", "8 Møde", "9 Chat"},
+	langDE: {"1 Aufg.", "2 Kal", "3 Tags", "4 Proj", "5 Board", "6 Stat.", "7 Einst.", "8 Meet.", "9 Chat"},
 }
 
 // Short task-list column headings. A column is as wide as the wider of its
@@ -306,6 +306,7 @@ var daTranslations = map[string]string{
 	"6 Stats":    "6 Statistik",
 	"7 Settings": "7 Indstillinger",
 	"8 Meetings": "8 Møder",
+	"9 Chat":     "9 Chat",
 
 	// Key hints (footer)
 
@@ -789,6 +790,35 @@ var daTranslations = map[string]string{
 	"alt+←/→ move by word  ·  ctrl+u clear to line start  ·  ctrl+k clear to line end": "alt+←/→ flyt et ord  ·  ctrl+u ryd til linjestart  ·  ctrl+k ryd til linjeslut",
 	"Saved": "Gemt",
 
+	// Chat tab (chattools.go, chatops.go, update_chat.go, view_chat.go)
+	"Chat": "Chat",
+	"  Ask about your tasks, projects, or meetings.": "  Spørg om dine opgaver, projekter eller møder.",
+	"Ask about your tasks, projects, or meetings…":   "Spørg om dine opgaver, projekter eller møder…",
+	"You":              "Dig",
+	"Assistant":        "Assistent",
+	"thinking…":        "tænker…",
+	"…[truncated]":     "…[afkortet]",
+	"project":          "projekt",
+	"priority":         "prioritet",
+	"Create task %q%s": "Opret opgave: %q%s",
+	"Mark %q done":     "Markér %q som udført",
+	"Edit %q%s":        "Rediger %q%s",
+	"Created task %q.": "Oprettede opgaven %q.",
+	"Marked %q done.":  "Markerede %q som udført.",
+	"Updated %q.":      "Opdaterede %q.",
+	"Couldn't find that task — it may have been deleted.": "Kunne ikke finde den opgave — den er muligvis blevet slettet.",
+	"That wasn't something I know how to do.":             "Det er ikke noget, jeg kan gøre.",
+	"Okay, I didn't do that.":                             "Okay, det gjorde jeg ikke.",
+	"Chat error: %v":                                      "Chat-fejl: %v",
+	"Error saving chat message: %v":                       "Fejl ved gemning af chatbesked: %v",
+	"create task via chat":                                "opret opgave via chat",
+	"complete task via chat":                              "afslut opgave via chat",
+	"edit task via chat":                                  "rediger opgave via chat",
+	"send message":                                        "send besked",
+	"confirm / decline a proposed action":                 "bekræft / afvis en foreslået handling",
+	"scroll the conversation":                             "rul i samtalen",
+	"switch tabs":                                         "skift faneblad",
+
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Deadlinepres",
 	"Priority focus":            "Prioritetsfokus",
@@ -1048,6 +1078,7 @@ var deTranslations = map[string]string{
 	"6 Stats":    "6 Statistik",
 	"7 Settings": "7 Einstell.",
 	"8 Meetings": "8 Meetings",
+	"9 Chat":     "9 Chat",
 
 	// Key hints (footer)
 
@@ -1530,6 +1561,35 @@ var deTranslations = map[string]string{
 	"ctrl+s or esc  save and exit":                    "ctrl+s oder esc  speichern und beenden",
 	"alt+←/→ move by word  ·  ctrl+u clear to line start  ·  ctrl+k clear to line end": "alt+←/→ ein Wort bewegen  ·  ctrl+u bis Zeilenanfang löschen  ·  ctrl+k bis Zeilenende löschen",
 	"Saved": "Gespeichert",
+
+	// Chat tab (chattools.go, chatops.go, update_chat.go, view_chat.go)
+	"Chat": "Chat",
+	"  Ask about your tasks, projects, or meetings.": "  Frag nach deinen Aufgaben, Projekten oder Meetings.",
+	"Ask about your tasks, projects, or meetings…":   "Frag nach deinen Aufgaben, Projekten oder Meetings…",
+	"You":              "Du",
+	"Assistant":        "Assistent",
+	"thinking…":        "denke nach…",
+	"…[truncated]":     "…[gekürzt]",
+	"project":          "Projekt",
+	"priority":         "Priorität",
+	"Create task %q%s": "Aufgabe anlegen: %q%s",
+	"Mark %q done":     "%q als erledigt markieren",
+	"Edit %q%s":        "Bearbeite %q%s",
+	"Created task %q.": "Aufgabe %q erstellt.",
+	"Marked %q done.":  "%q als erledigt markiert.",
+	"Updated %q.":      "%q aktualisiert.",
+	"Couldn't find that task — it may have been deleted.": "Diese Aufgabe konnte nicht gefunden werden — sie wurde möglicherweise gelöscht.",
+	"That wasn't something I know how to do.":             "Das ist nichts, was ich tun kann.",
+	"Okay, I didn't do that.":                             "Okay, das habe ich nicht gemacht.",
+	"Chat error: %v":                                      "Chat-Fehler: %v",
+	"Error saving chat message: %v":                       "Fehler beim Speichern der Chat-Nachricht: %v",
+	"create task via chat":                                "Aufgabe per Chat erstellen",
+	"complete task via chat":                              "Aufgabe per Chat abschließen",
+	"edit task via chat":                                  "Aufgabe per Chat bearbeiten",
+	"send message":                                        "Nachricht senden",
+	"confirm / decline a proposed action":                 "eine vorgeschlagene Aktion bestätigen / ablehnen",
+	"scroll the conversation":                             "durch die Unterhaltung scrollen",
+	"switch tabs":                                         "Reiter wechseln",
 
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Fristendruck",
