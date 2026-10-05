@@ -658,7 +658,8 @@ func (m model) footerContentFor(w int) string {
 		modeEditProjectInline, modeEditTimeEntry, modeAddTimeEntry,
 		modeEditSyncURL, modeEditSyncToken,
 		modeEditServerListen, modeEditServerToken, modeEditStages,
-		modeEditExportFolder, modeImportFile:
+		modeEditExportFolder, modeImportFile,
+		modeEditAnthropicKey, modeEditOpenAIKey, modeEditGeminiKey, modeEditFFmpegInput:
 		field := inputStyle.Width(w).Render(m.textInput.View())
 		if m.mode == modeInput && m.pane == paneList {
 			// Quick-add: on a blank input show the syntax reference (the keywords

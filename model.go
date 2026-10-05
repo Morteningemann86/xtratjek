@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Iliorn/tjek/aiprovider"
 	"github.com/Iliorn/tjek/paths"
 	"github.com/Iliorn/tjek/rank"
 	"github.com/Iliorn/tjek/tasksync"
@@ -61,6 +62,11 @@ const (
 	settingReminderTime
 	settingExportFolder
 	settingImportFile
+	settingAIProvider
+	settingAnthropicKey
+	settingOpenAIKey
+	settingGeminiKey
+	settingFFmpegInput
 	numSettingsRows
 )
 
@@ -149,6 +155,12 @@ const (
 	// modeBoardCard is the read-only card view: the selected card's fields in
 	// place of the columns, until esc (update_board.go).
 	modeBoardCard
+	// The Settings tab's four AI-config inline text editors (aisettings.go),
+	// one mode per field, matching modeEditSyncToken/modeEditServerToken.
+	modeEditAnthropicKey
+	modeEditOpenAIKey
+	modeEditGeminiKey
+	modeEditFFmpegInput
 )
 
 // untaggedKey is a sentinel used both as the Tags-tab virtual row for tasks
@@ -469,6 +481,15 @@ type model struct {
 	// written to the DB (see the timer tick) so a live timer stays "fresh"
 	// against the stale-timer recoverer without writing every second.
 	lastTimerHeartbeat time.Time
+
+	// AI provider configuration for the Meetings tab (aisettings.go,
+	// aiprovider/). aiProvider is one of aiprovider.ProviderNames; aiKeys
+	// holds all three keys regardless of which is active, since transcription
+	// always needs OpenAI's even when it isn't the text provider. ffmpegInput
+	// overrides audiorecorder.go's per-platform microphone default.
+	aiProvider  string
+	aiKeys      aiprovider.Keys
+	ffmpegInput string
 }
 
 func initialModel(repo Repository) model {
@@ -562,7 +583,14 @@ func initialModel(repo Repository) model {
 		subtaskTags:       !settings.SubtaskTagsDisabled,
 		themeName:         th.name,
 		detailPos:         detailPosFromSettings(settings.DetailPosition),
-		remindedOn:        loadRemindedOn(),
+		aiProvider:        settings.AIProvider,
+		aiKeys: aiprovider.Keys{
+			Anthropic: settings.AnthropicKey,
+			OpenAI:    settings.OpenAIKey,
+			Gemini:    settings.GeminiKey,
+		},
+		ffmpegInput: settings.FFmpegInput,
+		remindedOn:  loadRemindedOn(),
 		// The top of the one settings pane. The zero value is a row ID, not a
 		// position, and it happens to be the first bias knob — which opened
 		// the tab with the cursor parked in the middle of the list.

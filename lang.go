@@ -707,6 +707,19 @@ var daTranslations = map[string]string{
 	"Bind address, e.g. 100.x.y.z:8765 or 127.0.0.1:8765":                         "Bind-adresse, fx 100.x.y.z:8765 eller 127.0.0.1:8765",
 	"Plain http to a public host: token travels unencrypted":                      "Almindelig http til en offentlig vært: token sendes ukrypteret",
 
+	// ── AI & Meetings (Settings) ──
+	"AI & Meetings":       "AI & Møder",
+	"AI provider":         "AI-udbyder",
+	"Anthropic API key":   "Anthropic API-nøgle",
+	"OpenAI API key":      "OpenAI API-nøgle",
+	"Gemini API key":      "Gemini API-nøgle",
+	"Microphone override": "Mikrofonoverstyring",
+	"Anthropic API key (clear the field to remove it)":                        "Anthropic API-nøgle (ryd feltet for at fjerne den)",
+	"Gemini API key (clear the field to remove it)":                           "Gemini API-nøgle (ryd feltet for at fjerne den)",
+	"OpenAI API key — also needed to transcribe recordings (clear to remove)": "OpenAI API-nøgle — kræves også til transskribering af optagelser (ryd for at fjerne)",
+	"Microphone override: format:input, e.g. dshow:audio=Microphone":          "Mikrofonoverstyring: format:input, fx dshow:audio=Microphone",
+	"platform default": "platformens standard",
+
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Deadlinepres",
 	"Priority focus":            "Prioritetsfokus",
@@ -1365,6 +1378,19 @@ var deTranslations = map[string]string{
 	"weak token; ctrl+g on this row generates a strong one":                       "schwaches Token; ctrl+g in dieser Zeile erzeugt ein starkes",
 	"Bind address, e.g. 100.x.y.z:8765 or 127.0.0.1:8765":                         "Bind-Adresse, z. B. 100.x.y.z:8765 oder 127.0.0.1:8765",
 	"Plain http to a public host: token travels unencrypted":                      "Klartext-HTTP zu öffentlichem Host: Token wird unverschlüsselt übertragen",
+
+	// ── AI & Meetings (Settings) ──
+	"AI & Meetings":       "KI & Meetings",
+	"AI provider":         "KI-Anbieter",
+	"Anthropic API key":   "Anthropic-API-Schlüssel",
+	"OpenAI API key":      "OpenAI-API-Schlüssel",
+	"Gemini API key":      "Gemini-API-Schlüssel",
+	"Microphone override": "Mikrofon-Übersteuerung",
+	"Anthropic API key (clear the field to remove it)":                        "Anthropic-API-Schlüssel (Feld leeren zum Entfernen)",
+	"Gemini API key (clear the field to remove it)":                           "Gemini-API-Schlüssel (Feld leeren zum Entfernen)",
+	"OpenAI API key — also needed to transcribe recordings (clear to remove)": "OpenAI-API-Schlüssel — wird auch zur Transkription von Aufnahmen benötigt (leeren zum Entfernen)",
+	"Microphone override: format:input, e.g. dshow:audio=Microphone":          "Mikrofon-Übersteuerung: Format:Eingabe, z. B. dshow:audio=Microphone",
+	"platform default": "Plattform-Standard",
 
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Fristendruck",

@@ -141,6 +141,24 @@ type appSettings struct {
 	// can be rebound and how a broken entry is handled (dropped with a warning,
 	// never leaving the action unreachable).
 	Keys map[string]string `json:"keys,omitempty"`
+
+	// AIProvider and the three keys below configure the Meetings tab's AI
+	// calls (aiprovider/): summarizing a transcript and mining it for action
+	// items. Local only, like every other field here — settings.json as a
+	// whole is never part of the tasksync wire protocol (only individual
+	// fields plumbed through Request/Response are), so these keys never
+	// leave this machine through sync the way a sync token or server token
+	// would have to be guarded against if they did.
+	AIProvider   string `json:"ai_provider,omitempty"`
+	AnthropicKey string `json:"anthropic_key,omitempty"`
+	OpenAIKey    string `json:"openai_key,omitempty"`
+	GeminiKey    string `json:"gemini_key,omitempty"`
+
+	// FFmpegInput overrides audiorecorder.go's per-platform microphone
+	// default: "format:input", e.g. "dshow:audio=Microphone Array". Required
+	// on Windows (DirectShow device names aren't guessable); optional
+	// elsewhere, for an ALSA-only Linux box or a non-default input device.
+	FFmpegInput string `json:"ffmpeg_input,omitempty"`
 }
 
 // migrateSettings brings settings saved under an older schema version up to

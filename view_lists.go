@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Iliorn/tjek/aiprovider"
 	"github.com/Iliorn/tjek/rank"
 	"github.com/Iliorn/tjek/todo"
 	"github.com/charmbracelet/lipgloss"
@@ -1375,6 +1376,13 @@ var settingsGroups = []settingsGroup{
 		settingVersion,
 		settingCheckUpdate,
 	}},
+	{title: "AI & Meetings", rows: []int{
+		settingAIProvider,
+		settingAnthropicKey,
+		settingOpenAIKey,
+		settingGeminiKey,
+		settingFFmpegInput,
+	}},
 }
 
 // The pane is drawn as two columns of groups: the first settingsColumnSplit
@@ -1420,7 +1428,8 @@ func (m model) settingsRowVisible(id int) bool {
 func settingsEditsText(id int) bool {
 	switch id {
 	case settingStages, settingSyncServer, settingSyncToken, settingServerListen, settingServerToken,
-		settingExportFolder, settingImportFile:
+		settingExportFolder, settingImportFile,
+		settingAnthropicKey, settingOpenAIKey, settingGeminiKey, settingFFmpegInput:
 		return true
 	}
 	return false
@@ -1527,6 +1536,11 @@ func (m model) renderSettingsSection(w int) (string, int) {
 		settingExportFolder:      tr("Auto-export folder"),
 		settingImportFile:        tr("Import from file"),
 		settingSubtaskTags:       tr("Subtasks copy tags"),
+		settingAIProvider:        tr("AI provider"),
+		settingAnthropicKey:      tr("Anthropic API key"),
+		settingOpenAIKey:         tr("OpenAI API key"),
+		settingGeminiKey:         tr("Gemini API key"),
+		settingFFmpegInput:       tr("Microphone override"),
 	}
 	agingVal := tr("Off")
 	if m.rank.Biases.Aging {
@@ -1591,6 +1605,16 @@ func (m model) renderSettingsSection(w int) (string, int) {
 			serverTokenVal = "•••• " + tr("weak token; ctrl+g on this row generates a strong one")
 		}
 	}
+	keyVal := func(k string) string {
+		if k == "" {
+			return tr("not set")
+		}
+		return "•••• " + tr("set")
+	}
+	ffmpegInputVal := tr("platform default")
+	if m.ffmpegInput != "" {
+		ffmpegInputVal = m.ffmpegInput
+	}
 	values := map[int]string{
 		settingBiasDeadline:      biasPickerValue(m.rank.Biases.Deadline),
 		settingBiasPriority:      biasPickerValue(m.rank.Biases.Priority),
@@ -1618,6 +1642,11 @@ func (m model) renderSettingsSection(w int) (string, int) {
 		settingExportFolder:      exportFolderDisplay(m.exportFolder),
 		settingImportFile:        tr("choose a file"),
 		settingSubtaskTags:       "‹ " + subtaskTagsVal + " ›",
+		settingAIProvider:        "‹ " + aiprovider.DisplayName(m.aiProvider) + " ›",
+		settingAnthropicKey:      keyVal(m.aiKeys.Anthropic),
+		settingOpenAIKey:         keyVal(m.aiKeys.OpenAI),
+		settingGeminiKey:         keyVal(m.aiKeys.Gemini),
+		settingFFmpegInput:       ffmpegInputVal,
 	}
 
 	// One label column across every group, so the values line up down the

@@ -389,6 +389,14 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newModel, cmd = m.updateEditServerListen(msg)
 	case modeEditServerToken:
 		newModel, cmd = m.updateEditServerToken(msg)
+	case modeEditAnthropicKey:
+		newModel, cmd = m.updateEditAnthropicKey(msg)
+	case modeEditOpenAIKey:
+		newModel, cmd = m.updateEditOpenAIKey(msg)
+	case modeEditGeminiKey:
+		newModel, cmd = m.updateEditGeminiKey(msg)
+	case modeEditFFmpegInput:
+		newModel, cmd = m.updateEditFFmpegInput(msg)
 	case modeAddSubtask:
 		newModel, cmd = m.updateAddSubtask(msg)
 	case modeEditSubtask:
@@ -1714,6 +1722,12 @@ func (m *model) persistSettings() {
 		SubtaskTagsDisabled: !m.subtaskTags,
 		ReminderOff:         !m.reminderOn,
 		ExportFolder:        m.exportFolder,
+
+		AIProvider:   m.aiProvider,
+		AnthropicKey: m.aiKeys.Anthropic,
+		OpenAIKey:    m.aiKeys.OpenAI,
+		GeminiKey:    m.aiKeys.Gemini,
+		FFmpegInput:  m.ffmpegInput,
 	}); err != nil {
 		m.flashError(fmt.Sprintf(tr("Error saving settings: %v"), err))
 	}
@@ -2005,6 +2019,33 @@ func (m model) handleSettingsEnter() (tea.Model, tea.Cmd) {
 	case settingCheckUpdate:
 		m.updateStatus = tr("Checking…")
 		return m, checkForUpdate()
+	case settingAnthropicKey:
+		m.mode = modeEditAnthropicKey
+		m.textInput.SetValue(m.aiKeys.Anthropic)
+		m.textInput.EchoMode = textinput.EchoPassword // see settingSyncToken
+		m.textInput.Placeholder = tr("Anthropic API key (clear the field to remove it)")
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case settingOpenAIKey:
+		m.mode = modeEditOpenAIKey
+		m.textInput.SetValue(m.aiKeys.OpenAI)
+		m.textInput.EchoMode = textinput.EchoPassword
+		m.textInput.Placeholder = tr("OpenAI API key — also needed to transcribe recordings (clear to remove)")
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case settingGeminiKey:
+		m.mode = modeEditGeminiKey
+		m.textInput.SetValue(m.aiKeys.Gemini)
+		m.textInput.EchoMode = textinput.EchoPassword
+		m.textInput.Placeholder = tr("Gemini API key (clear the field to remove it)")
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case settingFFmpegInput:
+		m.mode = modeEditFFmpegInput
+		m.textInput.SetValue(m.ffmpegInput)
+		m.textInput.Placeholder = tr("Microphone override: format:input, e.g. dshow:audio=Microphone")
+		m.textInput.Focus()
+		return m, textinput.Blink
 	default:
 		// Every remaining row is a toggle or a picker, and enter means the
 		// same on it as →. One table, so a row cannot answer one key and not
@@ -2050,6 +2091,8 @@ func (m *model) settingsAdjust(dir int) tea.Cmd {
 		m.toggleSyncBoard()
 	case settingServerOn:
 		return m.startStopServer()
+	case settingAIProvider:
+		m.cycleAIProvider(dir)
 	}
 	return nil
 }
