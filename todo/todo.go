@@ -211,6 +211,11 @@ type Todo struct {
 	ParentID     string      `json:"parent_id,omitempty"`
 	Recurrence   string      `json:"recurrence,omitempty"`
 
+	// MeetingID traces this task back to the meeting whose action-item review
+	// created it ("" for every task not created that way). Set once, at
+	// creation, by accepting a meeting.Suggestion; never edited afterward.
+	MeetingID string `json:"meeting_id,omitempty"`
+
 	// Stage is the kanban board column a pending top-level task sits in — one
 	// of the user-configured stage names (settings.json "stages"). Empty means
 	// the first configured stage, so existing tasks need no backfill and a
