@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Iliorn/tjek/aiprovider"
@@ -208,6 +209,17 @@ func TestScriptEditMeetingNotesCtrlSAndEscBothSave(t *testing.T) {
 	}
 	if !m.meetingTextarea.Focused() {
 		t.Fatal("meetingTextarea is not focused after 'n'")
+	}
+
+	// Both key-hint lines must survive the fullscreen layout's line budget —
+	// meetingEditChromeLines undercounting by even one silently clips the
+	// second line instead of the harmless trailing blank it's meant to.
+	rendered := m.View()
+	if !strings.Contains(rendered, "save and exit") {
+		t.Error("edit screen is missing the ctrl+s/esc hint line")
+	}
+	if !strings.Contains(rendered, "move by word") {
+		t.Error("edit screen is missing the word-jump/clear-line hint line")
 	}
 
 	m = script(t, m, "Ask about the Q4 budget", "ctrl+s")

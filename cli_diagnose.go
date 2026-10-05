@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 
@@ -106,6 +107,7 @@ func collectDiagnostics() []diagnostic {
 	out = append(out, diagnoseSettings()...)
 	out = append(out, diagnoseSync()...)
 	out = append(out, diagnoseEditor())
+	out = append(out, diagnoseFFmpeg())
 	return out
 }
 
@@ -335,6 +337,19 @@ func diagnoseEditor() diagnostic {
 		}
 	}
 	return diagnostic{Name: "editor", Value: cmd, Status: statusOK, Detail: "used for task notes"}
+}
+
+// diagnoseFFmpeg reports whether ffmpeg is on PATH — required to record a
+// meeting (audiorecorder.go), optional otherwise, so its absence is a
+// warning rather than a failure.
+func diagnoseFFmpeg() diagnostic {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		return diagnostic{
+			Name: "ffmpeg", Value: "not found", Status: statusWarn,
+			Detail: "needed to record Meetings; " + ffmpegInstallHint(),
+		}
+	}
+	return diagnostic{Name: "ffmpeg", Value: "found", Status: statusOK, Detail: "used to record Meetings"}
 }
 
 // isLoopbackURL reports whether a sync URL points at this machine, where

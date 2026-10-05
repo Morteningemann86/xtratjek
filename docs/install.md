@@ -61,6 +61,15 @@ go build -ldflags "-X main.appVersion=$(git describe --tags --abbrev=0)" -o tjek
 mv tjek ~/.local/bin/   # or anywhere on your PATH
 ```
 
+## Recording meetings needs ffmpeg
+
+The Meetings tab's recording (`r`) shells out to `ffmpeg`, which is a
+separate install from tjek itself. Scoop pulls it in automatically as a
+dependency; every other install path needs it installed separately — see
+[Files and troubleshooting](troubleshooting.md#ffmpeg-not-found-when-recording-a-meeting)
+for the command on each platform. `tjek doctor` reports whether tjek can find
+it. Typing notes, summarizing and reviewing action items all work without it.
+
 ## Checking a download
 
 That a file matches what the release published:

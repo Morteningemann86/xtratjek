@@ -23,6 +23,21 @@ const (
 	recordChannels   = "1"
 )
 
+// ffmpegInstallHint names the one command that installs ffmpeg on this
+// platform's most common package manager — shown by both the recording
+// error and `tjek doctor`, so a missing ffmpeg is something to paste into a
+// terminal rather than something to go search for.
+func ffmpegInstallHint() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "install it with: brew install ffmpeg"
+	case "windows":
+		return "install it with: winget install ffmpeg (or scoop install ffmpeg, choco install ffmpeg)"
+	default:
+		return "install it with your package manager, e.g. sudo apt install ffmpeg (Debian/Ubuntu), sudo dnf install ffmpeg (Fedora), or sudo pacman -S ffmpeg (Arch)"
+	}
+}
+
 // defaultFFmpegInput returns the -f/-i pair for this platform's default
 // microphone. Windows has no stable default: DirectShow devices are named by
 // the OS and vary machine to machine (discoverable with
@@ -91,7 +106,7 @@ func StartRecording(outputPath, inputOverride string) (*AudioRecorder, error) {
 		outputPath,
 	)
 	if errors.Is(cmd.Err, exec.ErrNotFound) {
-		return nil, errors.New("ffmpeg not found — install it and make sure it's on PATH to record meetings")
+		return nil, fmt.Errorf("ffmpeg not found — %s", ffmpegInstallHint())
 	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

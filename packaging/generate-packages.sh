@@ -32,7 +32,10 @@ sha_windows="$(sha tjek.exe)"
 #   scoop install https://github.com/Iliorn/tjek/releases/latest/download/tjek.json
 # That URL always resolves to the newest release, so it never needs bumping.
 # checkver/autoupdate are there so the manifest also works unmodified inside a
-# Scoop bucket, where the excavator maintains it.
+# Scoop bucket, where the excavator maintains it. "depends": "ffmpeg" makes
+# Scoop install ffmpeg from the main bucket first if it isn't already on the
+# system — Meetings recording (audiorecorder.go) needs it on PATH, and this
+# is the one install path that can pull it in automatically.
 cat > "$outdir/tjek.json" <<EOF
 {
     "version": "${bare}",
@@ -45,6 +48,7 @@ cat > "$outdir/tjek.json" <<EOF
             "hash": "${sha_windows}"
         }
     },
+    "depends": "ffmpeg",
     "bin": "tjek.exe",
     "checkver": {
         "github": "https://github.com/Iliorn/tjek"

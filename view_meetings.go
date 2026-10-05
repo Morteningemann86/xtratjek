@@ -250,9 +250,14 @@ func (m model) renderSuggestionRow(s meeting.Suggestion, focused bool, w int) []
 }
 
 // meetingEditChromeLines is the fixed chrome renderEditMeetingTextFullscreen
-// wraps the textarea in: a blank line, the heading, a blank line, a blank
-// line, and the two key-hint lines — everything but the textarea itself.
-const meetingEditChromeLines = 6
+// wraps the textarea in — a blank line, the heading, a blank line, a blank
+// line, and the two key-hint lines (6), plus the trailing blank element
+// strings.Split leaves behind because the builder's last Write ends in "\n"
+// (1) — everything but the textarea itself. Undercounting this by even one
+// silently clips the last hint line off the bottom of the screen instead of
+// the harmless trailing blank, the same accounting explainChromeLines does
+// for the explain overlay.
+const meetingEditChromeLines = 7
 
 // renderEditMeetingTextFullscreen draws the in-app Notes/Transcript editor —
 // full-screen chrome of its own, like the help and explain overlays, so

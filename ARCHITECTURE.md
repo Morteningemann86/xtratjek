@@ -590,7 +590,14 @@ for it from this tab.
   identically on every OS, unlike process signals on Windows). Linux/macOS
   get a working default input; Windows has none (DirectShow device names
   aren't guessable) and needs the Settings → AI override, same as an
-  ALSA-only Linux box.
+  ALSA-only Linux box. ffmpeg itself is a separate install tjek doesn't
+  bundle: `tjek doctor` reports whether it's on `PATH` (`diagnoseFFmpeg`,
+  cli_diagnose.go), the missing-ffmpeg error names the right install command
+  for the platform (`ffmpegInstallHint`), and the Scoop manifest
+  (`packaging/generate-packages.sh`) declares it as a dependency so
+  `scoop install tjek` pulls it in without a separate step — the Homebrew
+  tap (a different repository, `Iliorn/homebrew-tap`) does not yet do the
+  equivalent with `depends_on "ffmpeg"`.
 - **The detail pane has its own key handler**, `updateMeetingsDetail`,
   parallel to `updateDetail` rather than sharing `updateList`'s switch:
   recording, generating and reviewing only make sense once a meeting is
@@ -612,6 +619,11 @@ for it from this tab.
 
 ### Not done yet
 
+- **Homebrew doesn't install ffmpeg as a dependency.** The `Iliorn/homebrew-tap`
+  formula (bumped by `.github/workflows/release.yml`'s `homebrew` job) has no
+  `depends_on "ffmpeg"`, unlike the Scoop manifest here — so `brew install
+  iliorn/tap/tjek` doesn't pull it in the way `scoop install tjek` does. That
+  repository is out of this one's reach from here; it needs its own change.
 - **No CLI verbs.** Recording/review are interactive by nature, but a
   `tjek meeting add --notes=-` for piping in an existing transcript
   non-interactively would be a natural, low-risk addition.

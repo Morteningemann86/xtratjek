@@ -1,8 +1,27 @@
 # Files and troubleshooting
 
 `tjek doctor` is the first stop: it prints the version, where every file
-lives, and whether the database, settings, sync and editor are healthy. Paste
-its output into a bug report.
+lives, and whether the database, settings, sync, editor and ffmpeg are
+healthy. Paste its output into a bug report.
+
+## "ffmpeg not found" when recording a meeting
+
+Recording a meeting (Meetings tab, `r`) shells out to `ffmpeg`, which tjek
+doesn't bundle or install — `tjek doctor` reports whether it can find it on
+`PATH`. Install it with:
+
+| | |
+|---|---|
+| macOS | `brew install ffmpeg` |
+| Windows (Scoop) | already installed automatically — `scoop install tjek` pulls it in as a dependency |
+| Windows (other) | `winget install ffmpeg`, `choco install ffmpeg` |
+| Debian / Ubuntu | `sudo apt install ffmpeg` |
+| Fedora | `sudo dnf install ffmpeg` |
+| Arch | `sudo pacman -S ffmpeg` |
+
+Everything else in Meetings — typing notes, summarizing, reviewing action
+items — works without it; only recording and transcribing a live meeting
+need it.
 
 ## Where your data lives
 

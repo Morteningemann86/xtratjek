@@ -42,6 +42,21 @@ func TestDiagnosticsOnAFreshInstall(t *testing.T) {
 	findDiagnostic(t, report, "data directory")
 }
 
+// TestDiagnosticsReportsFFmpeg doesn't assume whether ffmpeg happens to be
+// installed on the machine running the test — only that doctor always says
+// something about it (ok if found, a warning with an install hint if not),
+// and never fails the report over it: Meetings recording is optional, not a
+// broken installation.
+func TestDiagnosticsReportsFFmpeg(t *testing.T) {
+	got := findDiagnostic(t, collectDiagnostics(), "ffmpeg")
+	if got.Status == statusFail {
+		t.Errorf("ffmpeg diagnostic should never fail the report, got %+v", got)
+	}
+	if got.Status == statusWarn && !strings.Contains(got.Detail, "install") {
+		t.Errorf("ffmpeg warning should say how to install it, got detail %q", got.Detail)
+	}
+}
+
 func TestDiagnosticsReportsAHealthyStore(t *testing.T) {
 	setTestHome(t, t.TempDir())
 	repo := newSQLiteRepo()
