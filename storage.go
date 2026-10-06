@@ -160,6 +160,17 @@ type appSettings struct {
 	// on Windows (DirectShow device names aren't guessable); optional
 	// elsewhere, for an ALSA-only Linux box or a non-default input device.
 	FFmpegInput string `json:"ffmpeg_input,omitempty"`
+
+	// UseLocalWhisper routes Meetings transcription through a local
+	// whisper.cpp build (localwhisper.go) instead of the OpenAI API — no
+	// key, no network call, nothing leaving the machine. WhisperBinOverride
+	// is FFmpegInput's own override pattern applied to the whisper-cli
+	// path, for an install resolveWhisperBinPath's PATH lookup won't find.
+	// WhisperLanguage is a whisper.cpp language code (e.g. "da"); empty
+	// lets it auto-detect, at some cost to both accuracy and speed.
+	UseLocalWhisper    bool   `json:"use_local_whisper,omitempty"`
+	WhisperBinOverride string `json:"whisper_bin_override,omitempty"`
+	WhisperLanguage    string `json:"whisper_language,omitempty"`
 }
 
 // migrateSettings brings settings saved under an older schema version up to

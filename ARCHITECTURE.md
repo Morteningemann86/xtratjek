@@ -697,6 +697,100 @@ for it from this tab.
   the "ffmpeg missing" error path); the ordering, no-key, and per-chunk-
   failure logic that doesn't need a real recording is covered directly.
 
+## Local Whisper
+
+Settings → AI → "Use local Whisper" routes each chunk's transcription
+through a local `whisper.cpp` build instead of the OpenAI API — no key, no
+network call, nothing leaving the machine. Added because generic Whisper's
+accuracy is weak on lower-resource languages (Danish among them) below its
+`large`-class models, so a privacy/offline option needed `large-v3-turbo`
+as the floor, not a toy default — a ~574MB model, large enough that how
+it's acquired and stored is its own small piece of design, not an
+afterthought.
+
+- **`aiprovider.LocalWhisperProvider`** (`aiprovider/localwhisper.go`) is a
+  second `TranscriptionProvider`, alongside OpenAI's — the interface was
+  already exactly audio-in/text-out, so this needed no interface change,
+  just a second implementation. It shells out (`exec.CommandContext`,
+  `cmd.Output()` — not `CombinedOutput()`, since stdout here *is* the
+  transcript and whisper.cpp's own banner/progress chatter on stderr must
+  never land in it) rather than a cgo binding: `.github/workflows/
+  release.yml` builds every release with `CGO_ENABLED: 0` and `go.mod`'s
+  own `modernc.org/sqlite` is pure Go, so a whisper.cpp binding would be
+  this project's first cgo dependency, not a natural fit next to how
+  `ffmpeg` is already treated (a well-known external program, shelled out
+  to, never linked in).
+- **The model** (`localwhisper.go`, main package — it needs `paths` and
+  the TUI's confirm flow, so it isn't in `aiprovider`) is
+  `ggml-large-v3-turbo-q5_0.bin`, whisper.cpp's own "good balance"
+  quantization, from the canonical Hugging Face repo. Its exact size
+  (574,041,195 bytes) and SHA-256 are not guesses — both were read off the
+  real file, fetched by hand once during implementation, the same
+  "prove it, don't guess" standard `helpers.go`'s release-asset checksum
+  verification already holds self-update to. `downloadWhisperModel`
+  mirrors `downloadReleaseAsset`'s stream-while-hashing-then-verify shape,
+  but as its own function with its own host allowlist
+  (`checkModelURL`, pinned to `huggingface.co`/`hf.co`) rather than a
+  reuse of `checkAssetURL` — that one is pinned to GitHub on purpose, and
+  loosening it for an unrelated download would weaken it for its own
+  callers. The model lives at a fixed path, `<data>/whisper/<file>`
+  (mirroring recordings' own `<data>/recordings/<meetingID>/`), never a
+  stored Settings value — there's exactly one file this feature ever
+  wants.
+- **The `whisper-cli` binary is detected, not auto-installed.** Unlike
+  `ffmpeg`, whisper.cpp has no confirmed-reliable "one binary per OS, every
+  release" asset to mirror self-update's own download with, and
+  package-manager coverage is uneven (Homebrew's `whisper-cpp` formula is
+  a safe bet; apt/dnf/pacman/winget are not verified) — so
+  `resolveWhisperBinPath` only takes a Settings override
+  (`WhisperBinOverride`, trusted unconditionally, the same way
+  `ffmpegInput`'s override is) or an exact `exec.LookPath("whisper-cli")`
+  on PATH. The older `main` binary name is deliberately *not*
+  auto-discovered this way: "main" is common enough as some unrelated
+  tool's own build output that finding one on PATH would be a coincidence,
+  not a real signal, and blindly shelling out to it would be a real risk
+  for a convenience fallback not worth taking.
+- **Turning the setting on asks first, the same way installing ffmpeg
+  does.** With no model on disk yet, cycling "Use local Whisper" on opens
+  the same y/n confirm (`modeConfirm`) every other system-affecting action
+  in this app uses before running — declining leaves the setting off
+  rather than silently claiming to be usable. Turning it off never deletes
+  the model; there's no reason to throw away a 574MB download over a
+  toggle flip. A separate status/action row (`settingWhisperModelStatus`,
+  the same value-row-plus-do-it-row split `settingSyncServer`/
+  `settingSyncNow` already use) can fetch the model ahead of time or
+  re-fetch it after a corrupt/partial download, independent of the toggle.
+- **No silent fallback to OpenAI on a local failure.** Someone who turned
+  this on did it for privacy/offline/cost reasons; quietly phoning home on
+  failure would undo the one thing they asked for.
+  `transcribeSegmentCmd`'s `useLocal` branch surfaces a missing binary or
+  missing model exactly the way an API failure already does —
+  `handleSegmentTranscribed`'s per-chunk placeholder text, no new failure
+  path needed.
+- **The chunked pipeline (`recordSegmentDuration`, the whole
+  `handleSegmentClosed`/`handleSegmentTranscribed` ordering machinery) is
+  unchanged.** Local inference isn't bounded by Whisper API's 25MB
+  request cap, but the progressive-transcript UX chunking already gives
+  is just as good a reason to keep it for local as it was for OpenAI —
+  no reason to run two different pipelines for the two transcriber kinds.
+
+### Not done yet
+
+- **No auto-install of the `whisper-cli` binary itself** — see above;
+  needs real per-platform package-availability verification first.
+- **No live download progress** — a static "downloading…" message for the
+  whole model fetch, not a percentage. `downloadReleaseAsset` has the same
+  gap today.
+- **No model/quantization picker** — exactly `large-v3-turbo` q5_0, the
+  one this was built for.
+- **CPU performance on a real "average office laptop" is unverified.**
+  `large-v3-turbo` is meaningfully faster than plain `large-v3` by design,
+  but nobody has timed a real multi-minute chunk on non-benchmark hardware
+  yet.
+- **No GPU acceleration path** (Vulkan/CUDA whisper.cpp builds) —
+  CPU-only, matching the "average employee's workstation" framing this
+  feature started from.
+
 ## Chat
 
 Tab 9. A conversational screen for asking about current tasks/projects/

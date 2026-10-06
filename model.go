@@ -72,6 +72,10 @@ const (
 	settingGeminiKey
 	settingMistralKey
 	settingFFmpegInput
+	settingUseLocalWhisper
+	settingWhisperBinOverride
+	settingWhisperLanguage
+	settingWhisperModelStatus
 	numSettingsRows
 )
 
@@ -167,6 +171,11 @@ const (
 	modeEditGeminiKey
 	modeEditMistralKey
 	modeEditFFmpegInput
+	// modeEditWhisperBinOverride and modeEditWhisperLanguage are
+	// localwhisper.go's two free-text Settings fields, the same inline-
+	// editor shape as modeEditFFmpegInput.
+	modeEditWhisperBinOverride
+	modeEditWhisperLanguage
 	// modeAddMeeting is the title prompt for a new meeting (update_meetings.go).
 	modeAddMeeting
 	// modeEditSuggestion edits one action-item suggestion using quick-add
@@ -518,6 +527,15 @@ type model struct {
 	aiKeys      aiprovider.Keys
 	ffmpegInput string
 
+	// useLocalWhisper routes Meetings transcription through a local
+	// whisper.cpp build instead of the OpenAI API (localwhisper.go) — no
+	// key, no network call per chunk. whisperBinOverride is ffmpegInput's
+	// own override pattern for whisper-cli's path; whisperLanguage is a
+	// whisper.cpp language code ("" auto-detects).
+	useLocalWhisper    bool
+	whisperBinOverride string
+	whisperLanguage    string
+
 	// Meetings tab state (meetingops.go, update_meetings.go, view_meetings.go).
 	// The list itself is indexed by the shared m.cursor/m.listOffset like
 	// every other tab; m.pane (paneList/paneDetail) decides whether the list
@@ -695,6 +713,9 @@ func initialModel(repo Repository) model {
 			Mistral:   settings.MistralKey,
 		},
 		ffmpegInput:         settings.FFmpegInput,
+		useLocalWhisper:     settings.UseLocalWhisper,
+		whisperBinOverride:  settings.WhisperBinOverride,
+		whisperLanguage:     settings.WhisperLanguage,
 		meetingReviewCursor: -1,
 		remindedOn:          loadRemindedOn(),
 		// The top of the one settings pane. The zero value is a row ID, not a

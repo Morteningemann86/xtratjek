@@ -135,3 +135,42 @@ func (m model) updateEditFFmpegInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.textInput, cmd = m.textInput.Update(msg)
 	return m, cmd
 }
+
+// updateEditWhisperBinOverride and updateEditWhisperLanguage are
+// localwhisper.go's two free-text fields, the same not-a-secret shape
+// updateEditFFmpegInput uses above.
+func (m model) updateEditWhisperBinOverride(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	if key, ok := msg.(tea.KeyMsg); ok {
+		switch key.String() {
+		case "enter":
+			m.whisperBinOverride = strings.TrimSpace(m.textInput.Value())
+			m.persistSettings()
+			m.mode = modeNormal
+			return m, nil
+		case "esc":
+			m.mode = modeNormal
+			return m, nil
+		}
+	}
+	m.textInput, cmd = m.textInput.Update(msg)
+	return m, cmd
+}
+
+func (m model) updateEditWhisperLanguage(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	if key, ok := msg.(tea.KeyMsg); ok {
+		switch key.String() {
+		case "enter":
+			m.whisperLanguage = strings.TrimSpace(m.textInput.Value())
+			m.persistSettings()
+			m.mode = modeNormal
+			return m, nil
+		case "esc":
+			m.mode = modeNormal
+			return m, nil
+		}
+	}
+	m.textInput, cmd = m.textInput.Update(msg)
+	return m, cmd
+}

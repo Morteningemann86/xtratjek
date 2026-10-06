@@ -108,6 +108,7 @@ func collectDiagnostics() []diagnostic {
 	out = append(out, diagnoseSync()...)
 	out = append(out, diagnoseEditor())
 	out = append(out, diagnoseFFmpeg())
+	out = append(out, diagnoseWhisperCPP())
 	return out
 }
 
@@ -350,6 +351,21 @@ func diagnoseFFmpeg() diagnostic {
 		}
 	}
 	return diagnostic{Name: "ffmpeg", Value: "found", Status: statusOK, Detail: "used to record Meetings"}
+}
+
+// diagnoseWhisperCPP reports whether a local whisper-cli is reachable —
+// only load-bearing when Settings → AI → Use local Whisper is on, which is
+// why a missing one warns rather than fails: most installs never turn
+// that on and have no reason to have whisper.cpp at all.
+func diagnoseWhisperCPP() diagnostic {
+	settings, _ := loadSettings() // fail-soft, same as diagnoseSettings' own siblings here
+	if path, ok := resolveWhisperBinPath(settings.WhisperBinOverride); ok {
+		return diagnostic{Name: "whisper-cli", Value: path, Status: statusOK, Detail: "used for local Meetings transcription"}
+	}
+	return diagnostic{
+		Name: "whisper-cli", Value: "not found", Status: statusWarn,
+		Detail: "only needed if Settings → AI → Use local Whisper is on; " + whisperCLIInstallHint(),
+	}
 }
 
 // isLoopbackURL reports whether a sync URL points at this machine, where

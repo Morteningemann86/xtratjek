@@ -97,6 +97,15 @@ const (
 	maxReleaseJSONBytes    = 1 << 20  // 1 MB of release JSON is already absurd
 	maxReleaseAssetBytes   = 96 << 20 // 96 MB
 
+	// Local Whisper model download (localwhisper.go). The size cap sits
+	// just above the known file (574,041,195 bytes for
+	// ggml-large-v3-turbo-q5_0.bin, verified by hand against the real
+	// download) rather than a round number far beyond it — a wrong URL or
+	// a swapped file should fail well before streaming most of a 600MB
+	// response.
+	whisperModelDownloadTimeout = 30 * time.Minute
+	maxWhisperModelBytes        = 600 << 20 // 600 MB
+
 	maxDepSearchResults  = 5
 	maxTagSearchResults  = 5
 	maxProjSearchResults = 5

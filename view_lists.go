@@ -1383,6 +1383,10 @@ var settingsGroups = []settingsGroup{
 		settingGeminiKey,
 		settingMistralKey,
 		settingFFmpegInput,
+		settingUseLocalWhisper,
+		settingWhisperBinOverride,
+		settingWhisperLanguage,
+		settingWhisperModelStatus,
 	}},
 }
 
@@ -1430,7 +1434,8 @@ func settingsEditsText(id int) bool {
 	switch id {
 	case settingStages, settingSyncServer, settingSyncToken, settingServerListen, settingServerToken,
 		settingExportFolder, settingImportFile,
-		settingAnthropicKey, settingOpenAIKey, settingGeminiKey, settingMistralKey, settingFFmpegInput:
+		settingAnthropicKey, settingOpenAIKey, settingGeminiKey, settingMistralKey, settingFFmpegInput,
+		settingWhisperBinOverride, settingWhisperLanguage:
 		return true
 	}
 	return false
@@ -1511,38 +1516,42 @@ func (m model) renderSettingsSection(w int) (string, int) {
 		w = 8
 	}
 	labels := map[int]string{
-		settingBiasDeadline:      tr("Deadline pressure"),
-		settingBiasPriority:      tr("Priority focus"),
-		settingBiasMomentum:      tr("Momentum bias"),
-		settingAging:             tr("Aging increases score"),
-		settingAutoCloseParent:   tr("Auto-close parent"),
-		settingAutoCloseSubtasks: tr("Auto-close subtasks"),
-		settingShowBoard:         tr("Kanban board"),
-		settingTheme:             tr("Theme"),
-		settingLanguage:          tr("Language"),
-		settingDetailPos:         tr("Detail pane"),
-		settingStages:            tr("Board columns"),
-		settingSyncAuto:          tr("Automatic"),
-		settingSyncBoard:         tr("Share board columns"),
-		settingSyncServer:        tr("Sync server"),
-		settingSyncToken:         tr("Sync token"),
-		settingSyncNow:           tr("Sync now"),
-		settingServerOn:          tr("Enabled"),
-		settingServerListen:      tr("Listen"),
-		settingServerToken:       tr("Server token"),
-		settingVersion:           tr("Version"),
-		settingCheckUpdate:       tr("Check for updates"),
-		settingReminder:          tr("Daily reminder"),
-		settingReminderTime:      tr("Reminder time"),
-		settingExportFolder:      tr("Auto-export folder"),
-		settingImportFile:        tr("Import from file"),
-		settingSubtaskTags:       tr("Subtasks copy tags"),
-		settingAIProvider:        tr("AI provider"),
-		settingAnthropicKey:      tr("Anthropic API key"),
-		settingOpenAIKey:         tr("OpenAI API key"),
-		settingGeminiKey:         tr("Gemini API key"),
-		settingMistralKey:        tr("Mistral API key"),
-		settingFFmpegInput:       tr("Microphone override"),
+		settingBiasDeadline:       tr("Deadline pressure"),
+		settingBiasPriority:       tr("Priority focus"),
+		settingBiasMomentum:       tr("Momentum bias"),
+		settingAging:              tr("Aging increases score"),
+		settingAutoCloseParent:    tr("Auto-close parent"),
+		settingAutoCloseSubtasks:  tr("Auto-close subtasks"),
+		settingShowBoard:          tr("Kanban board"),
+		settingTheme:              tr("Theme"),
+		settingLanguage:           tr("Language"),
+		settingDetailPos:          tr("Detail pane"),
+		settingStages:             tr("Board columns"),
+		settingSyncAuto:           tr("Automatic"),
+		settingSyncBoard:          tr("Share board columns"),
+		settingSyncServer:         tr("Sync server"),
+		settingSyncToken:          tr("Sync token"),
+		settingSyncNow:            tr("Sync now"),
+		settingServerOn:           tr("Enabled"),
+		settingServerListen:       tr("Listen"),
+		settingServerToken:        tr("Server token"),
+		settingVersion:            tr("Version"),
+		settingCheckUpdate:        tr("Check for updates"),
+		settingReminder:           tr("Daily reminder"),
+		settingReminderTime:       tr("Reminder time"),
+		settingExportFolder:       tr("Auto-export folder"),
+		settingImportFile:         tr("Import from file"),
+		settingSubtaskTags:        tr("Subtasks copy tags"),
+		settingAIProvider:         tr("AI provider"),
+		settingAnthropicKey:       tr("Anthropic API key"),
+		settingOpenAIKey:          tr("OpenAI API key"),
+		settingGeminiKey:          tr("Gemini API key"),
+		settingMistralKey:         tr("Mistral API key"),
+		settingFFmpegInput:        tr("Microphone override"),
+		settingUseLocalWhisper:    tr("Use local Whisper"),
+		settingWhisperBinOverride: tr("whisper-cli path override"),
+		settingWhisperLanguage:    tr("Whisper language"),
+		settingWhisperModelStatus: tr("Local Whisper model"),
 	}
 	agingVal := tr("Off")
 	if m.rank.Biases.Aging {
@@ -1617,39 +1626,59 @@ func (m model) renderSettingsSection(w int) (string, int) {
 	if m.ffmpegInput != "" {
 		ffmpegInputVal = m.ffmpegInput
 	}
+	useLocalWhisperVal := tr("Off")
+	if m.useLocalWhisper {
+		useLocalWhisperVal = tr("On")
+	}
+	whisperBinOverrideVal := tr("auto-detect")
+	if m.whisperBinOverride != "" {
+		whisperBinOverrideVal = m.whisperBinOverride
+	}
+	whisperLanguageVal := tr("auto-detect")
+	if m.whisperLanguage != "" {
+		whisperLanguageVal = m.whisperLanguage
+	}
+	whisperModelStatusVal := tr("not downloaded — press enter to download")
+	if present, size := whisperModelStatus(); present {
+		whisperModelStatusVal = fmt.Sprintf(tr("downloaded (%s) — press enter to re-download"), humanBytes(size))
+	}
 	values := map[int]string{
-		settingBiasDeadline:      biasPickerValue(m.rank.Biases.Deadline),
-		settingBiasPriority:      biasPickerValue(m.rank.Biases.Priority),
-		settingBiasMomentum:      biasPickerValue(m.rank.Biases.Momentum),
-		settingAging:             "‹ " + agingVal + " ›",
-		settingAutoCloseParent:   "‹ " + autoCloseVal + " ›",
-		settingAutoCloseSubtasks: "‹ " + autoCloseSubsVal + " ›",
-		settingShowBoard:         "‹ " + showBoardVal + " ›",
-		settingTheme:             "‹ " + m.themeName + " ›",
-		settingLanguage:          "‹ " + activeLang.displayName() + " ›",
-		settingDetailPos:         "‹ " + trDetailPos(m.detailPos) + " ›",
-		settingStages:            m.boardCfg.stagesDisplay(),
-		settingSyncAuto:          syncAutoVal,
-		settingSyncBoard:         "‹ " + syncBoardVal + " ›",
-		settingSyncServer:        syncServerVal,
-		settingSyncToken:         syncTokenVal,
-		settingSyncNow:           tr("press enter to sync"),
-		settingServerOn:          "‹ " + serverState + " ›",
-		settingServerListen:      m.syncCfg.listenAddr(),
-		settingServerToken:       serverTokenVal,
-		settingVersion:           appVersion,
-		settingCheckUpdate:       tr("press enter to check"),
-		settingReminder:          "‹ " + reminderVal + " ›",
-		settingReminderTime:      "‹ " + formatReminder(m.reminderAt) + " ›",
-		settingExportFolder:      exportFolderDisplay(m.exportFolder),
-		settingImportFile:        tr("choose a file"),
-		settingSubtaskTags:       "‹ " + subtaskTagsVal + " ›",
-		settingAIProvider:        "‹ " + aiprovider.DisplayName(m.aiProvider) + " ›",
-		settingAnthropicKey:      keyVal(m.aiKeys.Anthropic),
-		settingOpenAIKey:         keyVal(m.aiKeys.OpenAI),
-		settingGeminiKey:         keyVal(m.aiKeys.Gemini),
-		settingMistralKey:        keyVal(m.aiKeys.Mistral),
-		settingFFmpegInput:       ffmpegInputVal,
+		settingBiasDeadline:       biasPickerValue(m.rank.Biases.Deadline),
+		settingBiasPriority:       biasPickerValue(m.rank.Biases.Priority),
+		settingBiasMomentum:       biasPickerValue(m.rank.Biases.Momentum),
+		settingAging:              "‹ " + agingVal + " ›",
+		settingAutoCloseParent:    "‹ " + autoCloseVal + " ›",
+		settingAutoCloseSubtasks:  "‹ " + autoCloseSubsVal + " ›",
+		settingShowBoard:          "‹ " + showBoardVal + " ›",
+		settingTheme:              "‹ " + m.themeName + " ›",
+		settingLanguage:           "‹ " + activeLang.displayName() + " ›",
+		settingDetailPos:          "‹ " + trDetailPos(m.detailPos) + " ›",
+		settingStages:             m.boardCfg.stagesDisplay(),
+		settingSyncAuto:           syncAutoVal,
+		settingSyncBoard:          "‹ " + syncBoardVal + " ›",
+		settingSyncServer:         syncServerVal,
+		settingSyncToken:          syncTokenVal,
+		settingSyncNow:            tr("press enter to sync"),
+		settingServerOn:           "‹ " + serverState + " ›",
+		settingServerListen:       m.syncCfg.listenAddr(),
+		settingServerToken:        serverTokenVal,
+		settingVersion:            appVersion,
+		settingCheckUpdate:        tr("press enter to check"),
+		settingReminder:           "‹ " + reminderVal + " ›",
+		settingReminderTime:       "‹ " + formatReminder(m.reminderAt) + " ›",
+		settingExportFolder:       exportFolderDisplay(m.exportFolder),
+		settingImportFile:         tr("choose a file"),
+		settingSubtaskTags:        "‹ " + subtaskTagsVal + " ›",
+		settingAIProvider:         "‹ " + aiprovider.DisplayName(m.aiProvider) + " ›",
+		settingAnthropicKey:       keyVal(m.aiKeys.Anthropic),
+		settingOpenAIKey:          keyVal(m.aiKeys.OpenAI),
+		settingGeminiKey:          keyVal(m.aiKeys.Gemini),
+		settingMistralKey:         keyVal(m.aiKeys.Mistral),
+		settingUseLocalWhisper:    "‹ " + useLocalWhisperVal + " ›",
+		settingWhisperBinOverride: whisperBinOverrideVal,
+		settingWhisperLanguage:    whisperLanguageVal,
+		settingWhisperModelStatus: whisperModelStatusVal,
+		settingFFmpegInput:        ffmpegInputVal,
 	}
 
 	// One label column across every group, so the values line up down the

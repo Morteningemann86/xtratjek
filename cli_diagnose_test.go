@@ -57,6 +57,40 @@ func TestDiagnosticsReportsFFmpeg(t *testing.T) {
 	}
 }
 
+// TestDiagnosticsReportsWhisperCLI mirrors TestDiagnosticsReportsFFmpeg:
+// doesn't assume whether whisper-cli happens to be installed, only that
+// doctor always says something about it and never fails the report over
+// it — local Whisper is optional, off by default, and most installs will
+// never have whisper-cli at all.
+func TestDiagnosticsReportsWhisperCLI(t *testing.T) {
+	setTestHome(t, t.TempDir())
+	got := findDiagnostic(t, collectDiagnostics(), "whisper-cli")
+	if got.Status == statusFail {
+		t.Errorf("whisper-cli diagnostic should never fail the report, got %+v", got)
+	}
+	if got.Status == statusWarn && !strings.Contains(got.Detail, "whisper.cpp") {
+		t.Errorf("whisper-cli warning should point at whisper.cpp, got detail %q", got.Detail)
+	}
+}
+
+// TestDiagnoseWhisperCPPRespectsOverride checks resolveWhisperBinPath's
+// override path through the diagnostic itself, not just the unit — an
+// override pointing at something that doesn't exist is still trusted
+// (same as ffmpegInput never being verified), so the diagnostic reports
+// it as found regardless.
+func TestDiagnoseWhisperCPPRespectsOverride(t *testing.T) {
+	dir := t.TempDir()
+	setTestHome(t, dir)
+	override := dir + "/my-whisper-cli"
+	if err := saveSettings(appSettings{WhisperBinOverride: override}); err != nil {
+		t.Fatal(err)
+	}
+	got := diagnoseWhisperCPP()
+	if got.Status != statusOK || got.Value != override {
+		t.Fatalf("diagnoseWhisperCPP() = %+v, want statusOK with the override path", got)
+	}
+}
+
 func TestDiagnosticsReportsAHealthyStore(t *testing.T) {
 	setTestHome(t, t.TempDir())
 	repo := newSQLiteRepo()

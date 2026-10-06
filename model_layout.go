@@ -586,6 +586,7 @@ func (m model) extraOverheadLines() int {
 		modeEditServerListen, modeEditServerToken, modeEditStages,
 		modeEditExportFolder, modeImportFile,
 		modeEditAnthropicKey, modeEditOpenAIKey, modeEditGeminiKey, modeEditMistralKey, modeEditFFmpegInput,
+		modeEditWhisperBinOverride, modeEditWhisperLanguage,
 		modeAddMeeting, modeEditSuggestion:
 		return 3
 	case modeSearchDep, modeSearchTag, modeSearchProject:

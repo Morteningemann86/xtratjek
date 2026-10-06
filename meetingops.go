@@ -220,6 +220,22 @@ func ffmpegInstallCmd(meetingID, name string, args []string) tea.Cmd {
 
 const aiRequestTimeout = 5 * time.Minute
 
+// transcriptionConfig is what transcribeSegmentCmd needs to pick a
+// transcriber, captured from model fields at the handleSegmentClosed call
+// site the same way keys alone used to be — useLocal routes through
+// aiprovider.LocalWhisperProvider (localwhisper.go) instead of
+// aiprovider.NewTranscriber, no key, no network call, nothing leaving the
+// machine. binOverride/language are Settings' WhisperBinOverride/
+// WhisperLanguage passed through as plain values; resolving the actual
+// binary path and model path happens inside transcribeSegmentCmd's
+// closure, the same place keys always turned into an actual transcriber.
+type transcriptionConfig struct {
+	keys        aiprovider.Keys
+	useLocal    bool
+	binOverride string
+	language    string
+}
+
 // transcribeSegmentCmd transcribes one closed chunk and always deletes its
 // audio file afterward, whether or not transcribing it succeeded — nothing
 // about a meeting's recorded audio is meant to be kept once tjek is done
@@ -227,18 +243,46 @@ const aiRequestTimeout = 5 * time.Minute
 // (handleSegmentTranscribed), and keeping the file around wouldn't change
 // that. cleanupOrphanedRecordings is the backstop for the one case this
 // can't cover: the process ending before this ever runs.
-func transcribeSegmentCmd(meetingID, path string, index int, final bool, keys aiprovider.Keys) tea.Cmd {
+//
+// A local-whisper failure (binary or model missing) is never silently
+// retried against OpenAI: someone who turned local whisper on did it for
+// privacy/offline/cost reasons, and quietly phoning home on failure would
+// undo the one thing they asked for — it surfaces exactly the way an API
+// failure already does (handleSegmentTranscribed's placeholder text).
+func transcribeSegmentCmd(meetingID, path string, index int, final bool, cfg transcriptionConfig) tea.Cmd {
 	return func() tea.Msg {
 		// defer, not a call at each return site, so the file is gone on
-		// every exit from here — including NewTranscriber failing before
-		// a request is even made (keys.OpenAI empty; not reachable through
-		// handleSegmentClosed today, which takes the no-key shortcut
-		// before ever calling this, but true regardless of caller).
+		// every exit from here — including a provider failing to resolve
+		// before a request is even made (not reachable through
+		// handleSegmentClosed today, which takes the no-key/no-local
+		// shortcut before ever calling this, but true regardless of caller).
 		defer os.Remove(path)
-		tr, err := aiprovider.NewTranscriber(keys)
-		if err != nil {
-			return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
+
+		var tr aiprovider.TranscriptionProvider
+		if cfg.useLocal {
+			binPath, ok := resolveWhisperBinPath(cfg.binOverride)
+			if !ok {
+				err := fmt.Errorf("whisper-cli not found — see Settings → AI or `tjek doctor`")
+				return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
+			}
+			modelPath, err := whisperModelPath()
+			if err == nil {
+				if present, _ := whisperModelStatus(); !present {
+					err = fmt.Errorf("local Whisper model not downloaded — see Settings → AI")
+				}
+			}
+			if err != nil {
+				return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
+			}
+			tr = &aiprovider.LocalWhisperProvider{BinPath: binPath, ModelPath: modelPath, Language: cfg.language}
+		} else {
+			var err error
+			tr, err = aiprovider.NewTranscriber(cfg.keys)
+			if err != nil {
+				return segmentTranscribedMsg{meetingID: meetingID, index: index, final: final, err: err}
+			}
 		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), aiRequestTimeout)
 		defer cancel()
 		text, err := tr.Transcribe(ctx, path)

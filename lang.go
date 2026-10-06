@@ -723,6 +723,21 @@ var daTranslations = map[string]string{
 	"Microphone override: format:input, e.g. dshow:audio=Microphone":          "Mikrofonoverstyring: format:input, fx dshow:audio=Microphone",
 	"platform default": "platformens standard",
 
+	// Local Whisper (localwhisper.go) — Settings → AI
+	"Use local Whisper":                                   "Brug lokal Whisper",
+	"whisper-cli path override":                           "sti-overstyring for whisper-cli",
+	"Whisper language":                                    "Whisper-sprog",
+	"Local Whisper model":                                 "Lokal Whisper-model",
+	"auto-detect":                                         "automatisk genkendelse",
+	"not downloaded — press enter to download":            "ikke downloadet — tryk enter for at downloade",
+	"downloaded (%s) — press enter to re-download":        "downloadet (%s) — tryk enter for at downloade igen",
+	"whisper-cli path override (leave blank to use PATH)": "sti-overstyring for whisper-cli (lad stå tom for at bruge PATH)",
+	"Language code, e.g. da (blank auto-detects)":         "Sprogkode, fx da (tom = automatisk genkendelse)",
+	"Download the local Whisper model (~%s) now? (y/n)":   "Download den lokale Whisper-model (~%s) nu? (y/n)",
+	"Downloading model… this can take a few minutes":      "Downloader model… dette kan tage et par minutter",
+	"Local Whisper model downloaded":                      "Lokal Whisper-model downloadet",
+	"Whisper model download failed: %v":                   "Download af Whisper-model mislykkedes: %v",
+
 	// ── Meetings tab ──
 	"Meetings":                             "Møder",
 	"Meeting":                              "Møde",
@@ -1496,6 +1511,21 @@ var deTranslations = map[string]string{
 	"OpenAI API key — also needed to transcribe recordings (clear to remove)": "OpenAI-API-Schlüssel — wird auch zur Transkription von Aufnahmen benötigt (leeren zum Entfernen)",
 	"Microphone override: format:input, e.g. dshow:audio=Microphone":          "Mikrofon-Übersteuerung: Format:Eingabe, z. B. dshow:audio=Microphone",
 	"platform default": "Plattform-Standard",
+
+	// Local Whisper (localwhisper.go) — Settings → AI
+	"Use local Whisper":                                   "Lokales Whisper verwenden",
+	"whisper-cli path override":                           "Pfadüberschreibung für whisper-cli",
+	"Whisper language":                                    "Whisper-Sprache",
+	"Local Whisper model":                                 "Lokales Whisper-Modell",
+	"auto-detect":                                         "automatische Erkennung",
+	"not downloaded — press enter to download":            "nicht heruntergeladen — enter drücken zum Herunterladen",
+	"downloaded (%s) — press enter to re-download":        "heruntergeladen (%s) — enter drücken, um es erneut herunterzuladen",
+	"whisper-cli path override (leave blank to use PATH)": "Pfadüberschreibung für whisper-cli (leer lassen, um PATH zu verwenden)",
+	"Language code, e.g. da (blank auto-detects)":         "Sprachcode, z. B. da (leer = automatische Erkennung)",
+	"Download the local Whisper model (~%s) now? (y/n)":   "Das lokale Whisper-Modell (~%s) jetzt herunterladen? (y/n)",
+	"Downloading model… this can take a few minutes":      "Modell wird heruntergeladen… das kann einige Minuten dauern",
+	"Local Whisper model downloaded":                      "Lokales Whisper-Modell heruntergeladen",
+	"Whisper model download failed: %v":                   "Download des Whisper-Modells fehlgeschlagen: %v",
 
 	// ── Meetings tab ──
 	"Meetings":                             "Meetings",

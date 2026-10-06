@@ -361,7 +361,7 @@ func (m model) handleSegmentClosed(msg segmentClosedMsg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, recordSegmentTick())
 	}
 
-	if m.aiKeys.OpenAI == "" {
+	if !m.useLocalWhisper && m.aiKeys.OpenAI == "" {
 		// Nothing to transcribe with — handleSegmentTranscribed still does
 		// the ordering/rollover bookkeeping and lands the meeting on
 		// StatusDraft once the last chunk is in, the same as it would
@@ -374,7 +374,13 @@ func (m model) handleSegmentClosed(msg segmentClosedMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	}
-	cmds = append(cmds, transcribeSegmentCmd(msg.meetingID, msg.path, msg.index, msg.final, m.aiKeys))
+	cfg := transcriptionConfig{
+		keys:        m.aiKeys,
+		useLocal:    m.useLocalWhisper,
+		binOverride: m.whisperBinOverride,
+		language:    m.whisperLanguage,
+	}
+	cmds = append(cmds, transcribeSegmentCmd(msg.meetingID, msg.path, msg.index, msg.final, cfg))
 	return m, tea.Batch(cmds...)
 }
 

@@ -234,6 +234,8 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleEditorFinished(msg)
 	case chatReplyMsg:
 		return m.handleChatReply(msg)
+	case whisperModelDownloadDoneMsg:
+		return m.handleWhisperModelDownloadDone(msg)
 	case segmentClosedMsg:
 		return m.handleSegmentClosed(msg)
 	case segmentTranscribedMsg:
@@ -436,6 +438,10 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newModel, cmd = m.updateEditMistralKey(msg)
 	case modeEditFFmpegInput:
 		newModel, cmd = m.updateEditFFmpegInput(msg)
+	case modeEditWhisperBinOverride:
+		newModel, cmd = m.updateEditWhisperBinOverride(msg)
+	case modeEditWhisperLanguage:
+		newModel, cmd = m.updateEditWhisperLanguage(msg)
 	case modeAddMeeting:
 		newModel, cmd = m.updateAddMeeting(msg)
 	case modeEditSuggestion:
@@ -1824,6 +1830,10 @@ func (m *model) persistSettings() {
 		GeminiKey:    m.aiKeys.Gemini,
 		MistralKey:   m.aiKeys.Mistral,
 		FFmpegInput:  m.ffmpegInput,
+
+		UseLocalWhisper:    m.useLocalWhisper,
+		WhisperBinOverride: m.whisperBinOverride,
+		WhisperLanguage:    m.whisperLanguage,
 	}); err != nil {
 		m.flashError(fmt.Sprintf(tr("Error saving settings: %v"), err))
 	}
@@ -2155,6 +2165,20 @@ func (m model) handleSettingsEnter() (tea.Model, tea.Cmd) {
 		m.textInput.Placeholder = tr("Microphone override: format:input, e.g. dshow:audio=Microphone")
 		m.textInput.Focus()
 		return m, textinput.Blink
+	case settingWhisperBinOverride:
+		m.mode = modeEditWhisperBinOverride
+		m.textInput.SetValue(m.whisperBinOverride)
+		m.textInput.Placeholder = tr("whisper-cli path override (leave blank to use PATH)")
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case settingWhisperLanguage:
+		m.mode = modeEditWhisperLanguage
+		m.textInput.SetValue(m.whisperLanguage)
+		m.textInput.Placeholder = tr("Language code, e.g. da (blank auto-detects)")
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case settingWhisperModelStatus:
+		return m, m.promptDownloadWhisperModel()
 	default:
 		// Every remaining row is a toggle or a picker, and enter means the
 		// same on it as →. One table, so a row cannot answer one key and not
@@ -2202,8 +2226,62 @@ func (m *model) settingsAdjust(dir int) tea.Cmd {
 		return m.startStopServer()
 	case settingAIProvider:
 		m.cycleAIProvider(dir)
+	case settingUseLocalWhisper:
+		return m.toggleUseLocalWhisper()
 	}
 	return nil
+}
+
+// toggleUseLocalWhisper is the local-Whisper row's ←/→/enter. Turning it
+// off never deletes the model — startStopServer's "stopping is just the
+// toggle" has no equivalent reason here to throw away a ~574MB download
+// over a flip. Turning it on when the model isn't present yet opens the
+// same y/n confirm every other system-affecting action in this app uses
+// before running, the same way startStopServer defers to a token editor
+// instead of flipping the bool outright when starting needs one first.
+func (m *model) toggleUseLocalWhisper() tea.Cmd {
+	if m.useLocalWhisper {
+		m.useLocalWhisper = false
+		m.persistSettings()
+		return nil
+	}
+	if present, _ := whisperModelStatus(); present {
+		m.useLocalWhisper = true
+		m.persistSettings()
+		return nil
+	}
+	return m.promptDownloadWhisperModel()
+}
+
+// promptDownloadWhisperModel is shared by the on/off toggle (turning it on
+// with no model yet) and settingWhisperModelStatus's own enter (fetching
+// ahead of time, or re-fetching after a corrupt/partial download) — same
+// confirm, same download either way. handleWhisperModelDownloadDone turns
+// useLocalWhisper on for both entry points on a successful download:
+// downloading it, however that got started, is always "I want to use
+// this now."
+func (m *model) promptDownloadWhisperModel() tea.Cmd {
+	m.mode = modeConfirm
+	m.confirmMsg = fmt.Sprintf(tr("Download the local Whisper model (~%s) now? (y/n)"), humanBytes(whisperModelSizeBytes))
+	m.confirmOnYes = func(m *model) tea.Cmd {
+		m.flashInfo(tr("Downloading model… this can take a few minutes"))
+		return downloadWhisperModelCmd()
+	}
+	return nil
+}
+
+// handleWhisperModelDownloadDone lands downloadWhisperModelCmd's result —
+// see promptDownloadWhisperModel's doc comment for why success always
+// turns useLocalWhisper on, regardless of which row's enter started it.
+func (m model) handleWhisperModelDownloadDone(msg whisperModelDownloadDoneMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.flashError(fmt.Sprintf(tr("Whisper model download failed: %v"), msg.err))
+		return m, clearErrAfter()
+	}
+	m.useLocalWhisper = true
+	m.persistSettings()
+	m.flashSuccess(tr("Local Whisper model downloaded"))
+	return m, clearErrAfter()
 }
 
 // cycleDetailPos moves the detail pane to the next placement. The rendered

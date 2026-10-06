@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -561,5 +562,130 @@ func TestCleanupOrphanedRecordingsRemovesLeftoverAudio(t *testing.T) {
 
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("leftover recording should be gone, stat err = %v", err)
+	}
+}
+
+// TestScriptSegmentClosedSkipsNoKeyShortcutWhenLocalWhisperEnabled covers
+// handleSegmentClosed's routing decision: with local whisper on, there is
+// something to transcribe with even though m.aiKeys.OpenAI is empty, so
+// the no-key shortcut (straight to StatusDraft, no transcription attempt)
+// must not fire.
+func TestScriptSegmentClosedSkipsNoKeyShortcutWhenLocalWhisperEnabled(t *testing.T) {
+	m := modelWithTasks(t)
+	m.tab = tabMeetings
+	m = script(t, m, "a", "Standup", "enter")
+	mt := m.meetings[0]
+	m = sendKey(t, m, "enter")
+	mt.Status = meeting.StatusRecording
+	m.useLocalWhisper = true
+	// m.aiKeys.OpenAI left empty on purpose.
+
+	path, err := segmentRecordingPath(mt.ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("fake audio"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	next, cmd := m.Update(segmentClosedMsg{meetingID: mt.ID, index: 0, path: path, final: true})
+	m = next.(model)
+	if cmd == nil {
+		t.Fatal("expected a command attempting transcription, not the no-key shortcut")
+	}
+	if mt.Status == meeting.StatusDraft {
+		t.Fatal("landed on StatusDraft synchronously — took the no-key shortcut instead of attempting local transcription")
+	}
+}
+
+// TestTranscribeSegmentCmdLocalWhisperNotFound mirrors
+// TestScriptRecordWithoutFFmpegOffersToInstallIt's "real not-found path"
+// approach for whisper-cli: nothing else here can run without it actually
+// installed, which this dev environment doesn't have.
+func TestTranscribeSegmentCmdLocalWhisperNotFound(t *testing.T) {
+	if _, err := exec.LookPath("whisper-cli"); err == nil {
+		t.Skip("whisper-cli is installed in this environment; the not-found path can't be exercised here")
+	}
+	setTestHome(t, t.TempDir())
+	path := filepath.Join(t.TempDir(), "seg-000.wav")
+	if err := os.WriteFile(path, []byte("fake audio"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := transcriptionConfig{useLocal: true}
+	msg := transcribeSegmentCmd("meeting-1", path, 0, true, cfg)()
+	tm, ok := msg.(segmentTranscribedMsg)
+	if !ok {
+		t.Fatalf("msg = %T, want segmentTranscribedMsg", msg)
+	}
+	if tm.err == nil || !strings.Contains(tm.err.Error(), "whisper-cli not found") {
+		t.Fatalf("err = %v, want a whisper-cli-not-found error", tm.err)
+	}
+	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+		t.Fatal("audio file should be deleted even when local whisper fails to resolve a binary")
+	}
+}
+
+// TestTranscribeSegmentCmdLocalWhisperModelNotDownloaded covers the other
+// local-whisper failure mode: a resolvable binary (an override, so it
+// doesn't depend on what's installed) but no model file at the fixed path
+// — setTestHome gives this test an isolated <data>/whisper/ with nothing
+// in it.
+func TestTranscribeSegmentCmdLocalWhisperModelNotDownloaded(t *testing.T) {
+	setTestHome(t, t.TempDir())
+	fakeBin := filepath.Join(t.TempDir(), "whisper-cli")
+	if err := os.WriteFile(fakeBin, []byte("#!/bin/sh\necho hi\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "seg-000.wav")
+	if err := os.WriteFile(path, []byte("fake audio"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := transcriptionConfig{useLocal: true, binOverride: fakeBin}
+	msg := transcribeSegmentCmd("meeting-1", path, 0, true, cfg)()
+	tm, ok := msg.(segmentTranscribedMsg)
+	if !ok {
+		t.Fatalf("msg = %T, want segmentTranscribedMsg", msg)
+	}
+	if tm.err == nil || !strings.Contains(tm.err.Error(), "model not downloaded") {
+		t.Fatalf("err = %v, want a model-not-downloaded error", tm.err)
+	}
+}
+
+// TestTranscribeSegmentCmdLocalWhisperSuccess is the happy path, with a
+// fake whisper-cli standing in for the real one — the same "don't require
+// the real external tool" approach aiprovider/localwhisper_test.go uses.
+func TestTranscribeSegmentCmdLocalWhisperSuccess(t *testing.T) {
+	setTestHome(t, t.TempDir())
+	modelPath, err := whisperModelPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modelPath, []byte("fake model"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fakeBin := filepath.Join(t.TempDir(), "whisper-cli")
+	if err := os.WriteFile(fakeBin, []byte("#!/bin/sh\necho transcribed text\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	audioPath := filepath.Join(t.TempDir(), "seg-000.wav")
+	if err := os.WriteFile(audioPath, []byte("fake audio"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := transcriptionConfig{useLocal: true, binOverride: fakeBin, language: "da"}
+	msg := transcribeSegmentCmd("meeting-1", audioPath, 0, true, cfg)()
+	tm, ok := msg.(segmentTranscribedMsg)
+	if !ok {
+		t.Fatalf("msg = %T, want segmentTranscribedMsg", msg)
+	}
+	if tm.err != nil {
+		t.Fatal(tm.err)
+	}
+	if tm.text != "transcribed text" {
+		t.Fatalf("text = %q", tm.text)
+	}
+	if _, statErr := os.Stat(audioPath); !os.IsNotExist(statErr) {
+		t.Fatal("audio file should be deleted after a successful transcription")
 	}
 }
