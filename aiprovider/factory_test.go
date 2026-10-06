@@ -24,6 +24,7 @@ func TestNewEachProvider(t *testing.T) {
 		{ProviderAnthropic, Keys{Anthropic: "k"}, "Anthropic"},
 		{ProviderOpenAI, Keys{OpenAI: "k"}, "OpenAI"},
 		{ProviderGemini, Keys{Gemini: "k"}, "Gemini"},
+		{ProviderMistral, Keys{Mistral: "k"}, "Mistral"},
 	}
 	for _, c := range cases {
 		p, err := New(c.name, c.keys)
@@ -68,6 +69,7 @@ func TestDisplayName(t *testing.T) {
 		ProviderAnthropic: "Anthropic",
 		ProviderOpenAI:    "OpenAI",
 		ProviderGemini:    "Gemini",
+		ProviderMistral:   "Mistral",
 		"":                "Anthropic",
 		"garbage":         "Anthropic",
 	}

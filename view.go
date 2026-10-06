@@ -675,7 +675,7 @@ func (m model) footerContentFor(w int) string {
 		modeEditSyncURL, modeEditSyncToken,
 		modeEditServerListen, modeEditServerToken, modeEditStages,
 		modeEditExportFolder, modeImportFile,
-		modeEditAnthropicKey, modeEditOpenAIKey, modeEditGeminiKey, modeEditFFmpegInput,
+		modeEditAnthropicKey, modeEditOpenAIKey, modeEditGeminiKey, modeEditMistralKey, modeEditFFmpegInput,
 		modeAddMeeting, modeEditSuggestion:
 		field := inputStyle.Width(w).Render(m.textInput.View())
 		if m.mode == modeInput && m.pane == paneList {

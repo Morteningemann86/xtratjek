@@ -31,10 +31,10 @@ func (m *model) cycleAIProvider(dir int) {
 	m.persistSettings()
 }
 
-// updateEditAnthropicKey, updateEditOpenAIKey and updateEditGeminiKey each
-// handle one inline key editor, pre-filled and masked like
-// updateEditSyncToken (syncsettings.go) — clearing the field to blank removes
-// the stored key.
+// updateEditAnthropicKey, updateEditOpenAIKey, updateEditGeminiKey and
+// updateEditMistralKey each handle one inline key editor, pre-filled and
+// masked like updateEditSyncToken (syncsettings.go) — clearing the field to
+// blank removes the stored key.
 
 func (m model) updateEditAnthropicKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -82,6 +82,26 @@ func (m model) updateEditGeminiKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch key.String() {
 		case "enter":
 			m.aiKeys.Gemini = strings.TrimSpace(m.textInput.Value())
+			m.persistSettings()
+			m.mode = modeNormal
+			m.textInput.EchoMode = textinput.EchoNormal
+			return m, nil
+		case "esc":
+			m.mode = modeNormal
+			m.textInput.EchoMode = textinput.EchoNormal
+			return m, nil
+		}
+	}
+	m.textInput, cmd = m.textInput.Update(msg)
+	return m, cmd
+}
+
+func (m model) updateEditMistralKey(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	if key, ok := msg.(tea.KeyMsg); ok {
+		switch key.String() {
+		case "enter":
+			m.aiKeys.Mistral = strings.TrimSpace(m.textInput.Value())
 			m.persistSettings()
 			m.mode = modeNormal
 			m.textInput.EchoMode = textinput.EchoNormal

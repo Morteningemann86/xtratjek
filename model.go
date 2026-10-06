@@ -70,6 +70,7 @@ const (
 	settingAnthropicKey
 	settingOpenAIKey
 	settingGeminiKey
+	settingMistralKey
 	settingFFmpegInput
 	numSettingsRows
 )
@@ -159,11 +160,12 @@ const (
 	// modeBoardCard is the read-only card view: the selected card's fields in
 	// place of the columns, until esc (update_board.go).
 	modeBoardCard
-	// The Settings tab's four AI-config inline text editors (aisettings.go),
-	// one mode per field, matching modeEditSyncToken/modeEditServerToken.
+	// The Settings tab's AI-config inline text editors (aisettings.go), one
+	// mode per field, matching modeEditSyncToken/modeEditServerToken.
 	modeEditAnthropicKey
 	modeEditOpenAIKey
 	modeEditGeminiKey
+	modeEditMistralKey
 	modeEditFFmpegInput
 	// modeAddMeeting is the title prompt for a new meeting (update_meetings.go).
 	modeAddMeeting
@@ -690,6 +692,7 @@ func initialModel(repo Repository) model {
 			Anthropic: settings.AnthropicKey,
 			OpenAI:    settings.OpenAIKey,
 			Gemini:    settings.GeminiKey,
+			Mistral:   settings.MistralKey,
 		},
 		ffmpegInput:         settings.FFmpegInput,
 		meetingReviewCursor: -1,

@@ -42,8 +42,8 @@ type Suggestion struct {
 }
 
 // TextProvider summarizes a transcript and mines it for action items. All
-// three of Anthropic, OpenAI and Gemini implement it, so the provider the
-// user picks in Settings is a drop-in swap.
+// four of Anthropic, OpenAI, Gemini and Mistral implement it, so the
+// provider the user picks in Settings is a drop-in swap.
 type TextProvider interface {
 	Name() string
 	// Summarize returns a short prose summary of transcript.
@@ -116,9 +116,11 @@ type ChatResult struct {
 }
 
 // TranscriptionProvider turns a recorded audio file into text. Only OpenAI
-// implements this today: Anthropic and Gemini's APIs have no speech-to-text
-// endpoint, so a transcription request always needs an OpenAI key configured
-// even when the text provider is set to one of the others — see
+// implements this today: Anthropic, Gemini and Mistral's Chat-completions-
+// style APIs wired up here have no speech-to-text endpoint of that shape
+// (Mistral's separate Voxtral audio API isn't implemented by this
+// package), so a transcription request always needs an OpenAI key
+// configured even when the text provider is set to one of the others — see
 // NewTranscriber.
 type TranscriptionProvider interface {
 	Name() string

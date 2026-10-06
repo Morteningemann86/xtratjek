@@ -432,6 +432,8 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newModel, cmd = m.updateEditOpenAIKey(msg)
 	case modeEditGeminiKey:
 		newModel, cmd = m.updateEditGeminiKey(msg)
+	case modeEditMistralKey:
+		newModel, cmd = m.updateEditMistralKey(msg)
 	case modeEditFFmpegInput:
 		newModel, cmd = m.updateEditFFmpegInput(msg)
 	case modeAddMeeting:
@@ -1820,6 +1822,7 @@ func (m *model) persistSettings() {
 		AnthropicKey: m.aiKeys.Anthropic,
 		OpenAIKey:    m.aiKeys.OpenAI,
 		GeminiKey:    m.aiKeys.Gemini,
+		MistralKey:   m.aiKeys.Mistral,
 		FFmpegInput:  m.ffmpegInput,
 	}); err != nil {
 		m.flashError(fmt.Sprintf(tr("Error saving settings: %v"), err))
@@ -2137,6 +2140,13 @@ func (m model) handleSettingsEnter() (tea.Model, tea.Cmd) {
 		m.textInput.SetValue(m.aiKeys.Gemini)
 		m.textInput.EchoMode = textinput.EchoPassword
 		m.textInput.Placeholder = tr("Gemini API key (clear the field to remove it)")
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case settingMistralKey:
+		m.mode = modeEditMistralKey
+		m.textInput.SetValue(m.aiKeys.Mistral)
+		m.textInput.EchoMode = textinput.EchoPassword
+		m.textInput.Placeholder = tr("Mistral API key (clear the field to remove it)")
 		m.textInput.Focus()
 		return m, textinput.Blink
 	case settingFFmpegInput:

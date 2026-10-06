@@ -6,11 +6,12 @@ const (
 	ProviderAnthropic = "anthropic"
 	ProviderOpenAI    = "openai"
 	ProviderGemini    = "gemini"
+	ProviderMistral   = "mistral"
 )
 
 // ProviderNames lists the valid provider ids in Settings' cycle order.
 // Anthropic first: it is this account's primary provider.
-var ProviderNames = []string{ProviderAnthropic, ProviderOpenAI, ProviderGemini}
+var ProviderNames = []string{ProviderAnthropic, ProviderOpenAI, ProviderGemini, ProviderMistral}
 
 // DisplayName returns a human label for a provider id, for Settings and
 // error messages. Unrecognized ids (including "") read as Anthropic, the
@@ -21,6 +22,8 @@ func DisplayName(providerName string) string {
 		return "OpenAI"
 	case ProviderGemini:
 		return "Gemini"
+	case ProviderMistral:
+		return "Mistral"
 	default:
 		return "Anthropic"
 	}
@@ -33,6 +36,7 @@ type Keys struct {
 	Anthropic string
 	OpenAI    string
 	Gemini    string
+	Mistral   string
 }
 
 // New returns the TextProvider for providerName (summarizing and extracting
@@ -52,6 +56,11 @@ func New(providerName string, keys Keys) (TextProvider, error) {
 			return nil, fmt.Errorf("Gemini: %w", ErrNoAPIKey)
 		}
 		return NewGemini(keys.Gemini), nil
+	case ProviderMistral:
+		if keys.Mistral == "" {
+			return nil, fmt.Errorf("Mistral: %w", ErrNoAPIKey)
+		}
+		return NewMistral(keys.Mistral), nil
 	case ProviderAnthropic, "":
 		if keys.Anthropic == "" {
 			return nil, fmt.Errorf("Anthropic: %w", ErrNoAPIKey)
@@ -64,8 +73,8 @@ func New(providerName string, keys Keys) (TextProvider, error) {
 
 // NewTranscriber returns the audio transcription provider. Always OpenAI,
 // regardless of which TextProvider is configured as the main one — see
-// TranscriptionProvider's doc comment on why Anthropic/Gemini can't serve
-// this regardless of their key being set.
+// TranscriptionProvider's doc comment on why Anthropic/Gemini/Mistral can't
+// serve this regardless of their key being set.
 func NewTranscriber(keys Keys) (TranscriptionProvider, error) {
 	if keys.OpenAI == "" {
 		return nil, fmt.Errorf("transcription needs an OpenAI API key (Anthropic and Gemini have no speech-to-text endpoint): %w", ErrNoAPIKey)

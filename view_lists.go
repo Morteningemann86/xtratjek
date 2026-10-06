@@ -1381,6 +1381,7 @@ var settingsGroups = []settingsGroup{
 		settingAnthropicKey,
 		settingOpenAIKey,
 		settingGeminiKey,
+		settingMistralKey,
 		settingFFmpegInput,
 	}},
 }
@@ -1429,7 +1430,7 @@ func settingsEditsText(id int) bool {
 	switch id {
 	case settingStages, settingSyncServer, settingSyncToken, settingServerListen, settingServerToken,
 		settingExportFolder, settingImportFile,
-		settingAnthropicKey, settingOpenAIKey, settingGeminiKey, settingFFmpegInput:
+		settingAnthropicKey, settingOpenAIKey, settingGeminiKey, settingMistralKey, settingFFmpegInput:
 		return true
 	}
 	return false
@@ -1540,6 +1541,7 @@ func (m model) renderSettingsSection(w int) (string, int) {
 		settingAnthropicKey:      tr("Anthropic API key"),
 		settingOpenAIKey:         tr("OpenAI API key"),
 		settingGeminiKey:         tr("Gemini API key"),
+		settingMistralKey:        tr("Mistral API key"),
 		settingFFmpegInput:       tr("Microphone override"),
 	}
 	agingVal := tr("Off")
@@ -1646,6 +1648,7 @@ func (m model) renderSettingsSection(w int) (string, int) {
 		settingAnthropicKey:      keyVal(m.aiKeys.Anthropic),
 		settingOpenAIKey:         keyVal(m.aiKeys.OpenAI),
 		settingGeminiKey:         keyVal(m.aiKeys.Gemini),
+		settingMistralKey:        keyVal(m.aiKeys.Mistral),
 		settingFFmpegInput:       ffmpegInputVal,
 	}
 

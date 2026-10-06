@@ -575,10 +575,12 @@ for it from this tab.
 
 - **`meeting/`** is the domain package (`Meeting`, `Suggestion`), framework-
   free like `todo/`. **`aiprovider/`** wraps the external calls: a
-  `TextProvider` (Anthropic, OpenAI or Gemini — summarize + extract action
-  items) and a `TranscriptionProvider` (OpenAI/Whisper only; Anthropic and
-  Gemini have no speech-to-text endpoint, so `NewTranscriber` needs an OpenAI
-  key regardless of which `TextProvider` is configured). Both are real HTTP
+  `TextProvider` (Anthropic, OpenAI, Gemini or Mistral — summarize + extract
+  action items, plus the Chat tab's tool-calling `Chat` method) and a
+  `TranscriptionProvider` (OpenAI/Whisper only; the other three have no
+  speech-to-text endpoint of that shape — Mistral's separate Voxtral audio
+  API isn't wired up here — so `NewTranscriber` needs an OpenAI key
+  regardless of which `TextProvider` is configured). All four are real HTTP
   calls, no SDKs — the same minimal-dependency approach self-update already
   uses for GitHub's API.
 - **Storage** (`storage_meetings.go`, migration 012) is local-only: meetings

@@ -153,6 +153,7 @@ type appSettings struct {
 	AnthropicKey string `json:"anthropic_key,omitempty"`
 	OpenAIKey    string `json:"openai_key,omitempty"`
 	GeminiKey    string `json:"gemini_key,omitempty"`
+	MistralKey   string `json:"mistral_key,omitempty"`
 
 	// FFmpegInput overrides audiorecorder.go's per-platform microphone
 	// default: "format:input", e.g. "dshow:audio=Microphone Array". Required
