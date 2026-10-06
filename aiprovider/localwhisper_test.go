@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -74,6 +76,23 @@ func TestLocalWhisperTranscribePassesLanguageFlag(t *testing.T) {
 	}
 	if strings.Contains(got, "-l") {
 		t.Fatalf("args = %q, want no -l flag when Language is empty", got)
+	}
+}
+
+// TestLocalWhisperTranscribePassesThreadFlag guards the fix for a real
+// measured problem: whisper-cli's own default of 4 threads left most of a
+// 28-thread machine idle, more than doubling encode time for no reason —
+// see localwhisper.go's comment on the -t flag for the numbers.
+func TestLocalWhisperTranscribePassesThreadFlag(t *testing.T) {
+	bin := fakeWhisperCLI(t, `echo "$@"
+`)
+	p := &LocalWhisperProvider{BinPath: bin, ModelPath: "model.bin"}
+	got, err := p.Transcribe(context.Background(), "audio.wav")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "-t "+strconv.Itoa(runtime.NumCPU())) {
+		t.Fatalf("args = %q, want -t %d present", got, runtime.NumCPU())
 	}
 }
 

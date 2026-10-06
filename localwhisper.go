@@ -222,14 +222,19 @@ func resolveWhisperBinPath(override string) (path string, found bool) {
 
 // whisperCLIInstallHint, unlike ffmpegInstallHint (audiorecorder.go), does
 // not assert a package-manager command for every platform: Homebrew's
-// whisper.cpp formula is a safe bet, but apt/dnf/pacman/winget coverage is
-// unverified, and naming a package that might not exist is worse than
-// pointing at the project itself.
+// whisper-cpp formula and apt's whisper.cpp (confirmed on Ubuntu — it
+// installs a whisper-cli binary, no PATH override needed) are both
+// verified; dnf/pacman/winget coverage is not, and naming a package that
+// might not exist is worse than pointing at the project itself.
 func whisperCLIInstallHint() string {
-	if runtime.GOOS == "darwin" {
+	switch {
+	case runtime.GOOS == "darwin":
 		return "install it with: brew install whisper-cpp"
+	case runtime.GOOS == "linux" && (commandAvailable("apt") || commandAvailable("apt-get")):
+		return "install it with: sudo apt install whisper.cpp"
+	default:
+		return "see https://github.com/ggml-org/whisper.cpp for prebuilt releases or build instructions"
 	}
-	return "see https://github.com/ggml-org/whisper.cpp for prebuilt releases or build instructions"
 }
 
 // whisperModelDownloadDoneMsg reports downloadWhisperModelCmd finishing —

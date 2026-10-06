@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -33,7 +35,17 @@ func (p *LocalWhisperProvider) Name() string { return "Local Whisper" }
 // timestamps or progress chatter, and only stdout is read as data; stderr
 // is read solely to build a useful error message on a non-zero exit.
 func (p *LocalWhisperProvider) Transcribe(ctx context.Context, audioPath string) (string, error) {
-	args := []string{"-m", p.ModelPath, "-f", audioPath, "-nt", "-np"}
+	args := []string{
+		"-m", p.ModelPath, "-f", audioPath, "-nt", "-np",
+		// whisper-cli's own default is 4 threads regardless of what's
+		// actually available — measured on a 28-thread machine, going
+		// 4→24 threads cut encode time by more than half (the dominant
+		// cost by far; model load and decode are both negligible next to
+		// it). Large-v3-turbo's encoder is the expensive part on CPU, and
+		// it parallelizes, so there's no reason to leave the rest of the
+		// machine idle while one chunk transcribes.
+		"-t", strconv.Itoa(runtime.NumCPU()),
+	}
 	if p.Language != "" {
 		args = append(args, "-l", p.Language)
 	}
