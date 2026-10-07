@@ -11,6 +11,32 @@ reader is deciding whether to upgrade, not reviewing the change. The reasoning
 belongs in the commit message, where it is kept next to the code it explains.
 `TestChangelogEntriesAreOneLine` enforces it.
 
+## [1.43.0] - 2026-10-07
+
+### Added
+
+- Meetings tab (8): record or type notes; AI summarizes them and proposes action items to accept.
+- Recordings are transcribed in 5-minute chunks as the meeting runs; the audio is then deleted.
+- Local Whisper (Settings → AI & Meetings) transcribes on your own machine, with no API key.
+- tjek offers to install ffmpeg and whisper-cli for you, after asking.
+- Chat tab (9): ask about tasks, projects and meetings; it can change a task once you confirm.
+- Esc on the Chat tab clears the conversation, after a y/n.
+- AI providers: Anthropic, OpenAI, Gemini and Mistral.
+- The detail pane has a section bar; → opens a section at the top of the pane.
+
+### Changed
+
+- tjek now lives at github.com/Morteningemann86/xtratjek, and updates come from its releases.
+- On macOS, install with `go install github.com/Morteningemann86/xtratjek@latest`.
+- Chat names the missing API key and where to add it in Settings.
+- A task that starts later shows its start day instead of a score.
+- Tags comes before Projects in the tab bar, and the / field is called Filter.
+- Footer hints show only each screen's essential keys.
+
+### Removed
+
+- The Homebrew tap; macOS builds from source with `go install`.
+
 ## [1.42.0] - 2026-09-29
 
 ### Changed
