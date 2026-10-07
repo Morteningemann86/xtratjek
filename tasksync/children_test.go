@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // children_test.go covers the child collections — the comment fold and the

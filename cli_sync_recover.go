@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/paths"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/paths"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // cli_sync_recover.go implements `tjek sync --recover` and `tjek sync

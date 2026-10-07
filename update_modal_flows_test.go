@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // Scripted flows for the detail-pane and list-tab modals.

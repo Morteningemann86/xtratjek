@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/aiprovider"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/aiprovider"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // switchToChat drives the real "9" keypress rather than poking m.tab/m.mode

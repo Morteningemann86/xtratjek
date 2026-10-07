@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // Settings → Export: a folder tjek keeps an up-to-date export in

@@ -48,5 +48,5 @@ fi
 
 # The link is the one thing generated notes gave that a section does not: a way
 # to read the versions around this one without leaving the release page.
-printf '%s\n\n**Full changelog:** https://github.com/Iliorn/tjek/blob/%s/CHANGELOG.md\n' \
+printf '%s\n\n**Full changelog:** https://github.com/Morteningemann86/xtratjek/blob/%s/CHANGELOG.md\n' \
   "$section" "$version"

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // A canonical action must use the same key in every context it appears in —

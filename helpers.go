@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Iliorn/tjek/paths"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/paths"
+	"github.com/Morteningemann86/xtratjek/todo"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -1053,12 +1053,12 @@ func selfUpdateAsset(goos, goarch string) (string, error) {
 		case "arm64":
 			return "tjek-linux-arm64", nil
 		}
-		return "", fmt.Errorf("no release build for linux/%s ; install from source with `go install github.com/Iliorn/tjek@latest`", goarch)
+		return "", fmt.Errorf("no release build for linux/%s ; install from source with `go install github.com/Morteningemann86/xtratjek@latest`", goarch)
 	case "windows":
 		if goarch == "amd64" {
 			return "tjek.exe", nil
 		}
-		return "", fmt.Errorf("no release build for windows/%s ; install from source with `go install github.com/Iliorn/tjek@latest`", goarch)
+		return "", fmt.Errorf("no release build for windows/%s ; install from source with `go install github.com/Morteningemann86/xtratjek@latest`", goarch)
 	case "darwin":
 		return "", fmt.Errorf("macOS updates are distributed via Homebrew; run `brew install iliorn/tap/tjek`")
 	default:

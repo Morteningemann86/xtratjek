@@ -19,7 +19,7 @@ version="${1:?usage: generate-packages.sh <version> <outdir>}"
 outdir="${2:?usage: generate-packages.sh <version> <outdir>}"
 # Scoop wants a bare version; the release tag carries a "v".
 bare="${version#v}"
-base="https://github.com/Iliorn/tjek/releases/download/${version}"
+base="https://github.com/Morteningemann86/xtratjek/releases/download/${version}"
 
 mkdir -p "$outdir"
 
@@ -29,7 +29,7 @@ sha_windows="$(sha tjek.exe)"
 
 # ── Scoop (Windows) ─────────────────────────────────────────────────────────
 # Installed with:
-#   scoop install https://github.com/Iliorn/tjek/releases/latest/download/tjek.json
+#   scoop install https://github.com/Morteningemann86/xtratjek/releases/latest/download/tjek.json
 # That URL always resolves to the newest release, so it never needs bumping.
 # checkver/autoupdate are there so the manifest also works unmodified inside a
 # Scoop bucket, where the excavator maintains it. "depends": "ffmpeg" makes
@@ -40,7 +40,7 @@ cat > "$outdir/tjek.json" <<EOF
 {
     "version": "${bare}",
     "description": "A keyboard-driven task manager for the terminal that tells you what to do next",
-    "homepage": "https://github.com/Iliorn/tjek",
+    "homepage": "https://github.com/Morteningemann86/xtratjek",
     "license": "MIT",
     "architecture": {
         "64bit": {
@@ -51,16 +51,16 @@ cat > "$outdir/tjek.json" <<EOF
     "depends": "ffmpeg",
     "bin": "tjek.exe",
     "checkver": {
-        "github": "https://github.com/Iliorn/tjek"
+        "github": "https://github.com/Morteningemann86/xtratjek"
     },
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/Iliorn/tjek/releases/download/v\$version/tjek.exe"
+                "url": "https://github.com/Morteningemann86/xtratjek/releases/download/v\$version/tjek.exe"
             }
         },
         "hash": {
-            "url": "https://github.com/Iliorn/tjek/releases/download/v\$version/SHA256SUMS"
+            "url": "https://github.com/Morteningemann86/xtratjek/releases/download/v\$version/SHA256SUMS"
         }
     }
 }

@@ -68,7 +68,7 @@ func TestWeakTokenWarningNeverQuotesTheToken(t *testing.T) {
 // wrote that body.
 func TestUpdateRefusesAssetsFromElsewhere(t *testing.T) {
 	allowed := []string{
-		"https://github.com/iliorn/tjek/releases/download/v1/tjek",
+		"https://github.com/Morteningemann86/xtratjek/releases/download/v1/tjek",
 		"https://objects.githubusercontent.com/foo",
 		"https://release-assets.githubusercontent.com/bar", // the host GitHub moved to
 	}
@@ -79,8 +79,8 @@ func TestUpdateRefusesAssetsFromElsewhere(t *testing.T) {
 	}
 
 	refused := []string{
-		"http://github.com/iliorn/tjek/releases/download/v1/tjek", // no TLS
-		"https://github.com.evil.test/tjek",                       // suffix that only looks right
+		"http://github.com/Morteningemann86/xtratjek/releases/download/v1/tjek", // no TLS
+		"https://github.com.evil.test/tjek",                                     // suffix that only looks right
 		"https://evil.test/tjek",
 		"https://githubXcom/tjek",
 		"ftp://github.com/tjek",

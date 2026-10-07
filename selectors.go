@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // Selectors are pure functions that derive a view from the source of truth (the

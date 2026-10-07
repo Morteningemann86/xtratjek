@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // On a terminal too short to show the whole overlay, the last section ("Date

@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // fakeRepo is an in-memory Repository for tests — no database, no filesystem.

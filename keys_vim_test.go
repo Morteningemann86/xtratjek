@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // keys_vim_test.go covers the j/k aliases and the class of bug that hid their

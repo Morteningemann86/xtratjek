@@ -2,7 +2,7 @@
 
 A keyboard-driven task manager for the terminal that tells you what to do next.
 
-[![CI](https://github.com/Iliorn/tjek/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/Iliorn/tjek/actions/workflows/ci.yml?query=branch%3Amain)
+[![CI](https://github.com/Morteningemann86/xtratjek/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/Morteningemann86/xtratjek/actions/workflows/ci.yml?query=branch%3Amain)
 ![Go](https://img.shields.io/badge/Go-1.25-00ADD8?style=flat&logo=go)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=flat)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
@@ -60,9 +60,9 @@ No account, no cloud service.
 | | |
 |---|---|
 | macOS | `brew install iliorn/tap/tjek` |
-| Windows | `scoop install https://github.com/Iliorn/tjek/releases/latest/download/tjek.json` |
-| Linux / Windows binary | [Releases](https://github.com/iliorn/tjek/releases) |
-| Anywhere Go runs | `go install github.com/Iliorn/tjek@latest` |
+| Windows | `scoop install https://github.com/Morteningemann86/xtratjek/releases/latest/download/tjek.json` |
+| Linux / Windows binary | [Releases](https://github.com/Morteningemann86/xtratjek/releases) |
+| Anywhere Go runs | `go install github.com/Morteningemann86/xtratjek@latest` |
 
 tjek updates itself from Settings → "Update to latest release".
 [docs/install.md](docs/install.md) covers building from source and verifying

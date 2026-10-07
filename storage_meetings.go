@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/meeting"
+	"github.com/Morteningemann86/xtratjek/meeting"
 )
 
 // storage_meetings.go is the SQLite backend for meetings and their AI

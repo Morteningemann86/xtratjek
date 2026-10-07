@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
 
-	"github.com/Iliorn/tjek/aiprovider"
+	"github.com/Morteningemann86/xtratjek/aiprovider"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"

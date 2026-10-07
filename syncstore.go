@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/tasksync"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/tasksync"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // syncstore.go is the one place a sync merge touches the database. Both sides

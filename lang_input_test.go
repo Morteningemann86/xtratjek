@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // lang_input_test.go pins the contract lang_input.go makes: on a translated

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/aiprovider"
-	"github.com/Iliorn/tjek/meeting"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/aiprovider"
+	"github.com/Morteningemann86/xtratjek/meeting"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // chattools.go defines the Chat tab's tool set: what the model is offered

@@ -16,7 +16,7 @@ and points you at that command rather than replacing Homebrew's files.
 ## Windows (Scoop)
 
 ```sh
-scoop install https://github.com/Iliorn/tjek/releases/latest/download/tjek.json
+scoop install https://github.com/Morteningemann86/xtratjek/releases/latest/download/tjek.json
 ```
 
 That address always points at the newest release. Upgrade with
@@ -26,7 +26,7 @@ Notes open in `EDITOR` if it is set (`setx EDITOR hx`), otherwise Notepad.
 
 ## A downloaded binary (Linux / Windows)
 
-From the [Releases](https://github.com/iliorn/tjek/releases) page:
+From the [Releases](https://github.com/Morteningemann86/xtratjek/releases) page:
 
 | File | Platform |
 |------|----------|
@@ -44,7 +44,7 @@ installed if it doesn't match.
 ## With Go
 
 ```sh
-go install github.com/Iliorn/tjek@latest
+go install github.com/Morteningemann86/xtratjek@latest
 ```
 
 Builds from source on any platform Go supports, including ones the release
@@ -55,7 +55,7 @@ strongest integrity guarantee.
 ## From source
 
 ```sh
-git clone https://github.com/iliorn/tjek
+git clone https://github.com/Morteningemann86/xtratjek
 cd tjek
 go build -ldflags "-X main.appVersion=$(git describe --tags --abbrev=0)" -o tjek .
 mv tjek ~/.local/bin/   # or anywhere on your PATH
@@ -77,7 +77,7 @@ action items all work without it.
 That a file matches what the release published:
 
 ```sh
-curl -LO https://github.com/Iliorn/tjek/releases/latest/download/SHA256SUMS
+curl -LO https://github.com/Morteningemann86/xtratjek/releases/latest/download/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
@@ -85,7 +85,7 @@ That it was built by this repository's release workflow. Every release
 binary is signed through Sigstore and recorded in a public log:
 
 ```sh
-gh attestation verify tjek --repo Iliorn/tjek
+gh attestation verify tjek --repo Morteningemann86/xtratjek
 ```
 
 Release builds are reproducible: check out the tag, run the same `go build`

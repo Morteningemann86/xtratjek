@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // cli.go is the non-TUI surface: a small set of subcommands sharing the same

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 func TestComputeLayout(t *testing.T) {

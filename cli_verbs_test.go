@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // These cover the CLI verbs that change state but had next to no tests: the

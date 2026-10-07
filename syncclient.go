@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/Iliorn/tjek/paths"
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/tasksync"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/paths"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/tasksync"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // syncclient.go is the `tjek sync` side: it pushes the local task set (including

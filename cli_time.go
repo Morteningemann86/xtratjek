@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // ── start / stop ─────────────────────────────────────────────────────────────

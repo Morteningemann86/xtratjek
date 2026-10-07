@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/paths"
+	"github.com/Morteningemann86/xtratjek/paths"
 )
 
 // clearPathEnv puts one test in a known state: a fresh home, no XDG variables,

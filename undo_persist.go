@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Iliorn/tjek/paths"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/paths"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // Undo for deletions persists to a sidecar JSON so the most recent task/subtask

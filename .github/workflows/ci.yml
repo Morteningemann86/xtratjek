@@ -160,9 +160,9 @@ jobs:
           # pipefail so a test failure here is not swallowed by tee.
           set -o pipefail
           declare -A floor=(
-            ["github.com/Iliorn/tjek"]=78
-            ["github.com/Iliorn/tjek/tasksync"]=92
-            ["github.com/Iliorn/tjek/todo"]=96
+            ["github.com/Morteningemann86/xtratjek"]=78
+            ["github.com/Morteningemann86/xtratjek/tasksync"]=92
+            ["github.com/Morteningemann86/xtratjek/todo"]=96
           )
           go test -cover -timeout 5m ./... | tee /tmp/cover.txt
           rc=0

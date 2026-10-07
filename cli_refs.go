@@ -9,8 +9,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // loadForCLI opens the store with the user's persisted biases and stage list

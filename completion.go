@@ -310,7 +310,7 @@ func manPage() string {
 	b.WriteString(".SH EXIT STATUS\n")
 	b.WriteString("0 on success, 1 on a runtime error, 2 on a usage error or an ambiguous\ntask reference.\n")
 	b.WriteString(".SH SEE ALSO\n")
-	b.WriteString("Full documentation at\n.UR https://github.com/Iliorn/tjek\n.UE\n")
+	b.WriteString("Full documentation at\n.UR https://github.com/Morteningemann86/xtratjek\n.UE\n")
 	return b.String()
 }
 

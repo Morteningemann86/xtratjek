@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // protocol_test.go covers the wire: the /v1/sync round trip, authentication,

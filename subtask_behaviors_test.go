@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // makeSub is a tiny constructor used across the subtask-behavior tests so the

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/aiprovider"
-	"github.com/Iliorn/tjek/meeting"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/aiprovider"
+	"github.com/Morteningemann86/xtratjek/meeting"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // update_meetings_test.go scripts the Meetings tab the same way

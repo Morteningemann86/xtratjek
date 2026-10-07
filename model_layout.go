@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // ── Detail scroll estimation ──────────────────────────────────────────────────

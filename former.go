@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Iliorn/tjek/paths"
+	"github.com/Morteningemann86/xtratjek/paths"
 )
 
 // adoptFormerName carries an install made under the former name, taskr, over

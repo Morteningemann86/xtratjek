@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Iliorn/tjek/paths"
+	"github.com/Morteningemann86/xtratjek/paths"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

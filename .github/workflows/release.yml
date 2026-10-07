@@ -132,7 +132,7 @@ jobs:
           DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         run: |
           set -euo pipefail
-          url="https://github.com/Iliorn/tjek/archive/refs/tags/${V}.tar.gz"
+          url="https://github.com/Morteningemann86/xtratjek/archive/refs/tags/${V}.tar.gz"
           sha="$(curl -fsSL "$url" | sha256sum | cut -d' ' -f1)"
 
           install -m 700 -d ~/.ssh

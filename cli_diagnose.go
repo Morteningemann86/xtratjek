@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Iliorn/tjek/paths"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/paths"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // `tjek doctor` — diagnose this installation.
@@ -409,7 +409,7 @@ func printDiagnostics(w *os.File, report []diagnostic) {
 	switch {
 	case failures > 0:
 		fmt.Fprintf(w, "%s found. Include this output in a bug report:\n", plural(failures, "problem"))
-		fmt.Fprintln(w, "https://github.com/Iliorn/tjek/issues/new")
+		fmt.Fprintln(w, "https://github.com/Morteningemann86/xtratjek/issues/new")
 	case warnings > 0:
 		fmt.Fprintf(w, "No problems. %s worth a look, marked !\n", plural(warnings, "thing"))
 	default:

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/paths"
+	"github.com/Morteningemann86/xtratjek/paths"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -150,5 +150,5 @@ func noteCrashToUser() {
 		fmt.Fprintf(os.Stderr, "The last few seconds of edits could not be saved: the crash happened mid-write.\n")
 	}
 	fmt.Fprintf(os.Stderr, "A report with the stack trace is at:\n  %s\n"+
-		"Please attach it to an issue at https://github.com/Iliorn/tjek/issues\n", lastCrashReport)
+		"Please attach it to an issue at https://github.com/Morteningemann86/xtratjek/issues\n", lastCrashReport)
 }

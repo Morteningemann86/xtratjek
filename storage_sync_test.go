@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // storage_sync_test.go covers the slice-2 storage changes: child deletions

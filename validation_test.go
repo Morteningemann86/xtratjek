@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // captureValidationWarnings swaps the package-level validationWarn for the

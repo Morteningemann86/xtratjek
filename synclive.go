@@ -3,7 +3,7 @@ package main
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/Iliorn/tjek/tasksync"
+	"github.com/Morteningemann86/xtratjek/tasksync"
 )
 
 // synclive.go is the thin Bubble Tea bridge to tasksync.Listener: the engine

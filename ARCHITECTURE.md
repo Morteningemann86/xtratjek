@@ -77,7 +77,7 @@ git push origin v1.10.0       # ← triggers the build + release
   the release attaches the same bytes under those names and lists them in
   `SHA256SUMS`.
 - **Self-update** (Settings → "Update to latest release") reads
-  `/repos/iliorn/tjek/releases/latest` over stdlib `net/http`
+  `/repos/Morteningemann86/xtratjek/releases/latest` over stdlib `net/http`
   (`fetchLatestRelease`, `downloadReleaseAsset`), so it needs no other tool
   installed. `downloadVerifiedAsset` checks the asset against `SHA256SUMS`
   and fails closed. The endpoint needs no auth; the unauthenticated rate limit

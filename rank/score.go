@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // ── Bias level ────────────────────────────────────────────────────────────────

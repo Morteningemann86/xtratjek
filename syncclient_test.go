@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/paths"
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/tasksync"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/paths"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/tasksync"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 func TestSyncStateRoundTrip(t *testing.T) {

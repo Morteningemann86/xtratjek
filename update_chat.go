@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/aiprovider"
+	"github.com/Morteningemann86/xtratjek/aiprovider"
 
 	"github.com/google/uuid"
 

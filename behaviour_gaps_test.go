@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // Behaviour that nothing reached: the calendar's time-entry delete, the

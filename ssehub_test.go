@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/tasksync"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/tasksync"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 func TestSSEEventsRequireToken(t *testing.T) {

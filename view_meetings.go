@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/meeting"
+	"github.com/Morteningemann86/xtratjek/meeting"
 
 	"github.com/charmbracelet/x/ansi"
 )

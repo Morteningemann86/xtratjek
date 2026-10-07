@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // syncTransport is shared by every sync round trip and the SSE listener. The

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // conflict_test.go covers DroppedLocalEdits — the recovery net. When the merge

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // tjek suggest mines the dependency structure the user already wrote down

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/paths"
+	"github.com/Morteningemann86/xtratjek/paths"
 )
 
 // syncadopt.go is the first-sync gate.

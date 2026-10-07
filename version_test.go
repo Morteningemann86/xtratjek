@@ -25,7 +25,7 @@ func TestResolveVersionPrefersLdflags(t *testing.T) {
 }
 
 func TestResolveVersionUsesModuleVersion(t *testing.T) {
-	// `go install github.com/Iliorn/tjek@latest` — no ldflags, but the
+	// `go install github.com/Morteningemann86/xtratjek@latest` — no ldflags, but the
 	// module proxy version is stamped in. This is the case that used to
 	// report "dev" and make the update check cry wolf on every run.
 	got := resolveVersion("dev", buildInfo("v1.30.2", nil))

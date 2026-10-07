@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // invariants_test.go drives the app with randomized key sequences (fixed seeds,

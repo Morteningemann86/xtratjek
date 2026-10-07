@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/aiprovider"
-	"github.com/Iliorn/tjek/meeting"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/aiprovider"
+	"github.com/Morteningemann86/xtratjek/meeting"
+	"github.com/Morteningemann86/xtratjek/todo"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

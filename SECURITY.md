@@ -5,7 +5,7 @@
 Please report security issues **privately**, not as a public issue.
 
 Use GitHub's private vulnerability reporting:
-[**Report a vulnerability**](https://github.com/Iliorn/tjek/security/advisories/new).
+[**Report a vulnerability**](https://github.com/Morteningemann86/xtratjek/security/advisories/new).
 It opens a private thread visible only to the maintainers.
 
 Please include what `tjek doctor` prints (it never includes your sync token),
@@ -89,7 +89,7 @@ identity, so there is no key for anyone, me included, to steal or misuse,
 and the log entry cannot be withdrawn after the fact. Verify a download with:
 
 ```sh
-gh attestation verify tjek --repo Iliorn/tjek
+gh attestation verify tjek --repo Morteningemann86/xtratjek
 ```
 
 That checks the provenance, not just the bytes: it names the workflow, the
@@ -100,7 +100,7 @@ guarantee, and this is the check to run by hand when that is not enough.
 
 If that trade is not one you want to make, do not use the in-app updater:
 
-- `go install github.com/Iliorn/tjek@latest` verifies against
+- `go install github.com/Morteningemann86/xtratjek@latest` verifies against
   `sum.golang.org`, an append-only transparency log. A recorded hash cannot be
   changed afterwards, including by the maintainer. This is the strongest
   guarantee tjek offers.

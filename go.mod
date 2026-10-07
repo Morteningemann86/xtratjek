@@ -1,4 +1,4 @@
-module github.com/Iliorn/tjek
+module github.com/Morteningemann86/xtratjek
 
 go 1.25.0
 

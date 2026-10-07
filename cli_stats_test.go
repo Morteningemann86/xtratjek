@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // TestComputeStatsBuckets covers the four pending buckets + the two done

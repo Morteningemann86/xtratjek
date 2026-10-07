@@ -5,8 +5,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 func approxEq(a, b float64) bool {

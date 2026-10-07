@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // explain.go answers the two questions the score column raises but

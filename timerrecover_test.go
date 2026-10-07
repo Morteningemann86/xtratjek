@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // runningEntry builds a task carrying one running time entry (no stop time).

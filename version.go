@@ -12,7 +12,7 @@ import (
 // The release workflow bakes the tag in with
 // `-ldflags "-X main.appVersion=v1.31.0"`, and that is always authoritative.
 // But it is not the only way tjek gets installed: `go install
-// github.com/Iliorn/tjek@latest` (which the README recommends) compiles
+// github.com/Morteningemann86/xtratjek@latest` (which the README recommends) compiles
 // without ldflags. Reporting "dev" there would make the update check, which
 // compares versions by string, offer an update on every run.
 //

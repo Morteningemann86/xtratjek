@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // order.go turns scores into an order: the lifts a task inherits from its

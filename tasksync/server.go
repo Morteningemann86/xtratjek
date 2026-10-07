@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // Store is the doorway the sync engine needs into task storage — the only

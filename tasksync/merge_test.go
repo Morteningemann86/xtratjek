@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // merge_test.go is the full conflict-resolution table for the sync merge core.

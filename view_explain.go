@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
+	"github.com/Morteningemann86/xtratjek/rank"
 )
 
 // view_explain.go is the reading side of rank/explain.go: the "why this

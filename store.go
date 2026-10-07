@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // Store is the single source of truth: the task set, the undo history, and the

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // ── Localization ──────────────────────────────────────────────────────────────

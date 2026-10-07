@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Iliorn/tjek/meeting"
+	"github.com/Morteningemann86/xtratjek/meeting"
 )
 
 // openTestStore opens an isolated, throwaway database — the handle-based

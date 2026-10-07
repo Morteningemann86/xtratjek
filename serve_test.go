@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/tasksync"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/tasksync"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // testSyncServer bundles a tasksync.Server with the test database its Store

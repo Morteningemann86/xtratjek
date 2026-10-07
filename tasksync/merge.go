@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 // merge.go is the heart of tjek's cross-device sync: a pure, I/O-free fold of

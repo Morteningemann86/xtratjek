@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/rank"
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/rank"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 func mkTodo(id, title string, status todo.Status) todo.Todo {

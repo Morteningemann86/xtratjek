@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Iliorn/tjek/todo"
+	"github.com/Morteningemann86/xtratjek/todo"
 )
 
 func suggestTask(id, title, project, notes string, created time.Time) todo.Todo {
