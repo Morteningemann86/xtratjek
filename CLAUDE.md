@@ -19,7 +19,7 @@ two audiences.
 - **Comments describe the code as it is now, not how it got here.** No "it used to…", "previously…", "the old X…", or eulogies for removed features; that history goes in the commit message. Say *why* the current code is the way it is, briefly; a comment that only makes sense to someone who saw the last version is noise to everyone else.
 - TokyoNight-style palette is the visual baseline.
 - Share the approach and get buy-in before large multi-file or expensive changes rather than spiraling.
-- After meaningful changes, remember this repo is public under GitHub user `Iliorn` (capital I; `git remote` is `https://github.com/Iliorn/tjek.git`).
+- After meaningful changes, remember this repo is public under GitHub user `Morteningemann86` (`git remote` is `https://github.com/Morteningemann86/xtratjek.git`).
 
 ## graphify
 
