@@ -18,7 +18,7 @@ func TestOpenAISummarize(t *testing.T) {
 		}
 		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
 		resp.Choices[0].Message.Content = "  The summary.  "
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -36,7 +36,7 @@ func TestOpenAIExtractActionItems(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
 		resp.Choices[0].Message.Content = `[{"title":"Follow up with legal","project":"","tags":[],"priority":"m","due":""}]`
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -71,7 +71,7 @@ func TestOpenAITranscribe(t *testing.T) {
 		if fh := r.MultipartForm.File["file"]; len(fh) == 1 {
 			gotFilename = fh[0].Filename
 		}
-		json.NewEncoder(w).Encode(openAITranscriptionResponse{Text: "  hello there  "})
+		_ = json.NewEncoder(w).Encode(openAITranscriptionResponse{Text: "  hello there  "})
 	}))
 	defer srv.Close()
 
@@ -111,7 +111,7 @@ func TestOpenAIAPIError(t *testing.T) {
 		resp.Error = &struct {
 			Message string `json:"message"`
 		}{Message: "rate limited"}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -130,7 +130,7 @@ func TestOpenAIChatText(t *testing.T) {
 		}
 		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
 		resp.Choices[0].Message.Content = "  hi there  "
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -157,7 +157,7 @@ func TestOpenAIChatToolCall(t *testing.T) {
 		tc.Function.Name = "list_tasks"
 		tc.Function.Arguments = `{"project":"Work"}`
 		resp.Choices[0].Message.ToolCalls = []openAIToolCall{tc}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -190,7 +190,7 @@ func TestOpenAIChatRoundTripsToolResult(t *testing.T) {
 		}
 		resp := openAIChatResponse{Choices: []openAIChoice{{}}}
 		resp.Choices[0].Message.Content = "You have one open task."
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 

@@ -23,7 +23,7 @@ func TestAnthropicSummarize(t *testing.T) {
 		if len(req.Messages) != 1 || req.Messages[0].Role != "user" {
 			t.Fatalf("request messages = %+v", req.Messages)
 		}
-		json.NewEncoder(w).Encode(anthropicResponse{
+		_ = json.NewEncoder(w).Encode(anthropicResponse{
 			Content: []anthropicContentBlock{{Type: "text", Text: "  A short summary.  "}},
 		})
 	}))
@@ -41,7 +41,7 @@ func TestAnthropicSummarize(t *testing.T) {
 
 func TestAnthropicExtractActionItems(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(anthropicResponse{
+		_ = json.NewEncoder(w).Encode(anthropicResponse{
 			Content: []anthropicContentBlock{{Type: "text", Text: `[{"title":"Send the invoice","project":"Billing","tags":["finance"],"priority":"h","due":"friday"}]`}},
 		})
 	}))
@@ -67,7 +67,7 @@ func TestAnthropicNoAPIKey(t *testing.T) {
 func TestAnthropicAPIError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(anthropicResponse{Error: &anthropicAPIError{Message: "invalid x-api-key"}})
+		_ = json.NewEncoder(w).Encode(anthropicResponse{Error: &anthropicAPIError{Message: "invalid x-api-key"}})
 	}))
 	defer srv.Close()
 
@@ -101,7 +101,7 @@ func TestAnthropicChatText(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&gotReq); err != nil {
 			t.Fatal(err)
 		}
-		json.NewEncoder(w).Encode(anthropicResponse{
+		_ = json.NewEncoder(w).Encode(anthropicResponse{
 			Content: []anthropicContentBlock{{Type: "text", Text: "hi there"}},
 		})
 	}))
@@ -125,7 +125,7 @@ func TestAnthropicChatText(t *testing.T) {
 
 func TestAnthropicChatToolUse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(anthropicResponse{
+		_ = json.NewEncoder(w).Encode(anthropicResponse{
 			Content: []anthropicContentBlock{{Type: "tool_use", ID: "toolu_1", Name: "list_tasks", Input: map[string]any{"project": "Work"}}},
 		})
 	}))
@@ -157,7 +157,7 @@ func TestAnthropicChatRoundTripsToolResult(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&gotReq); err != nil {
 			t.Fatal(err)
 		}
-		json.NewEncoder(w).Encode(anthropicResponse{
+		_ = json.NewEncoder(w).Encode(anthropicResponse{
 			Content: []anthropicContentBlock{{Type: "text", Text: "You have one open task."}},
 		})
 	}))

@@ -48,22 +48,22 @@ func New(providerName string, keys Keys) (TextProvider, error) {
 	switch providerName {
 	case ProviderOpenAI:
 		if keys.OpenAI == "" {
-			return nil, fmt.Errorf("OpenAI: %w", ErrNoAPIKey)
+			return nil, fmt.Errorf("%w for OpenAI", ErrNoAPIKey)
 		}
 		return NewOpenAI(keys.OpenAI), nil
 	case ProviderGemini:
 		if keys.Gemini == "" {
-			return nil, fmt.Errorf("Gemini: %w", ErrNoAPIKey)
+			return nil, fmt.Errorf("%w for Gemini", ErrNoAPIKey)
 		}
 		return NewGemini(keys.Gemini), nil
 	case ProviderMistral:
 		if keys.Mistral == "" {
-			return nil, fmt.Errorf("Mistral: %w", ErrNoAPIKey)
+			return nil, fmt.Errorf("%w for Mistral", ErrNoAPIKey)
 		}
 		return NewMistral(keys.Mistral), nil
 	case ProviderAnthropic, "":
 		if keys.Anthropic == "" {
-			return nil, fmt.Errorf("Anthropic: %w", ErrNoAPIKey)
+			return nil, fmt.Errorf("%w for Anthropic", ErrNoAPIKey)
 		}
 		return NewAnthropic(keys.Anthropic), nil
 	default:

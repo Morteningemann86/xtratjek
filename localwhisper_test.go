@@ -33,7 +33,7 @@ func TestDownloadWhisperModelSuccess(t *testing.T) {
 	sum := sha256.Sum256(payload)
 	whisperModelSHA256 = hex.EncodeToString(sum[:])
 	whisperModelServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(payload)
+		_, _ = w.Write(payload)
 	})
 
 	if present, _ := whisperModelStatus(); present {
@@ -63,7 +63,7 @@ func TestDownloadWhisperModelChecksumMismatchRejected(t *testing.T) {
 	setTestHome(t, t.TempDir())
 	whisperModelSHA256 = strings.Repeat("0", 64) // never matches real content
 	whisperModelServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("some bytes that don't match"))
+		_, _ = w.Write([]byte("some bytes that don't match"))
 	})
 
 	if err := downloadWhisperModel(); err == nil || !strings.Contains(err.Error(), "checksum mismatch") {

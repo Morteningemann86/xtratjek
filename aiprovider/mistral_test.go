@@ -16,7 +16,7 @@ func TestMistralSummarize(t *testing.T) {
 		}
 		resp := mistralChatResponse{Choices: []mistralChoice{{}}}
 		resp.Choices[0].Message.Content = "  The summary.  "
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -34,7 +34,7 @@ func TestMistralExtractActionItems(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := mistralChatResponse{Choices: []mistralChoice{{}}}
 		resp.Choices[0].Message.Content = `[{"title":"Follow up with legal","project":"","tags":[],"priority":"m","due":""}]`
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -61,7 +61,7 @@ func TestMistralNoAPIKey(t *testing.T) {
 func TestMistralAPIErrorTopLevelMessage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(mistralChatResponse{Message: "invalid api key"})
+		_ = json.NewEncoder(w).Encode(mistralChatResponse{Message: "invalid api key"})
 	}))
 	defer srv.Close()
 
@@ -80,7 +80,7 @@ func TestMistralChatText(t *testing.T) {
 		}
 		resp := mistralChatResponse{Choices: []mistralChoice{{}}}
 		resp.Choices[0].Message.Content = "  hi there  "
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -104,7 +104,7 @@ func TestMistralChatToolCall(t *testing.T) {
 		tc.Function.Name = "list_tasks"
 		tc.Function.Arguments = `{"project":"Work"}`
 		resp.Choices[0].Message.ToolCalls = []mistralToolCall{tc}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -131,7 +131,7 @@ func TestMistralChatRoundTripsToolResult(t *testing.T) {
 		}
 		resp := mistralChatResponse{Choices: []mistralChoice{{}}}
 		resp.Choices[0].Message.Content = "You have one open task."
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 

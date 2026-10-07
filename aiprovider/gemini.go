@@ -222,7 +222,7 @@ func geminiToolSpecsToTools(tools []ToolSpec) []geminiTool {
 	}
 	decls := make([]geminiFunctionDeclaration, len(tools))
 	for i, t := range tools {
-		decls[i] = geminiFunctionDeclaration{Name: t.Name, Description: t.Description, Parameters: t.Parameters}
+		decls[i] = geminiFunctionDeclaration(t)
 	}
 	return []geminiTool{{FunctionDeclarations: decls}}
 }

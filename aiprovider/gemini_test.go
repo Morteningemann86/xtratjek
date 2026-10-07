@@ -21,7 +21,7 @@ func TestGeminiSummarize(t *testing.T) {
 		resp.Candidates = []struct {
 			Content geminiContent `json:"content"`
 		}{{Content: geminiContent{Parts: []geminiPart{{Text: "  Summary text.  "}}}}}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -41,7 +41,7 @@ func TestGeminiExtractActionItems(t *testing.T) {
 		resp.Candidates = []struct {
 			Content geminiContent `json:"content"`
 		}{{Content: geminiContent{Parts: []geminiPart{{Text: `[{"title":"Book the venue","project":"","tags":["events"],"priority":"l","due":""}]`}}}}}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -69,7 +69,7 @@ func TestGeminiAPIError(t *testing.T) {
 		resp.Error = &struct {
 			Message string `json:"message"`
 		}{Message: "invalid API key"}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -90,7 +90,7 @@ func TestGeminiChatText(t *testing.T) {
 		resp.Candidates = []struct {
 			Content geminiContent `json:"content"`
 		}{{Content: geminiContent{Role: "model", Parts: []geminiPart{{Text: "hi there"}}}}}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -118,7 +118,7 @@ func TestGeminiChatFunctionCall(t *testing.T) {
 		}{{Content: geminiContent{Role: "model", Parts: []geminiPart{
 			{FunctionCall: &geminiFunctionCall{Name: "list_tasks", Args: map[string]any{"project": "Work"}}},
 		}}}}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -150,7 +150,7 @@ func TestGeminiChatRoundTripsToolResult(t *testing.T) {
 		resp.Candidates = []struct {
 			Content geminiContent `json:"content"`
 		}{{Content: geminiContent{Role: "model", Parts: []geminiPart{{Text: "You have one open task."}}}}}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
