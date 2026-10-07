@@ -5,3 +5,4 @@ tjek.exe
 tjek-macos-*
 *.test
 *.prof
+graphify-out/
