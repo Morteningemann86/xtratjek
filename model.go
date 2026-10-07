@@ -781,22 +781,12 @@ func initialModel(repo Repository) model {
 			m.inprocStop = stop
 		}
 	}
-	// Meetings load eagerly like everything else at startup (a small local
-	// read, same cost class as repo.Load()); a failure is non-fatal and just
-	// starts the tab empty rather than blocking launch over it. Loaded as
-	// *meeting.Meeting (not values) so a pointer handed out by currentMeeting/
-	// meetingByID stays valid even if m.meetings is later reallocated by append
-	// — the same reasoning Store.tasks being map[string]*todo.Todo follows.
-	if loaded, err := loadMeetings(); err == nil {
-		m.meetings = make([]*meeting.Meeting, len(loaded))
-		for i := range loaded {
-			m.meetings[i] = &loaded[i]
-		}
-	}
-	// Chat history loads eagerly too, same cost class and same "non-fatal,
-	// just starts empty" failure handling as meetings above.
-	if msgs, err := loadChatMessages(); err == nil {
-		m.chatMessages = msgs
+	// Meetings and chat live in the same SQLite store as the tasks, so they
+	// load only beside the SQLite repository. Any other Repository (the
+	// tests' fakeRepo) has no store behind it, and opening one here would
+	// create and migrate a fresh database for every model a test builds.
+	if _, ok := repo.(*sqliteRepo); ok {
+		m.loadMeetingsAndChat()
 	}
 	m.calendar.selected = startOfDay(time.Now())
 	m.reminderAt, m.reminderOn = storedReminder(settings)
@@ -1980,4 +1970,21 @@ func (m *model) renameProjectGlobally(oldName, newName string) []string {
 		}
 	}
 	return touched
+}
+
+// loadMeetingsAndChat reads the Meetings tab and the chat history at
+// startup. A failure is non-fatal and starts that tab empty rather than
+// blocking launch. Meetings are held as *meeting.Meeting so a pointer from
+// currentMeeting/meetingByID stays valid when m.meetings is reallocated by
+// append, the reason Store.tasks is map[string]*todo.Todo.
+func (m *model) loadMeetingsAndChat() {
+	if loaded, err := loadMeetings(); err == nil {
+		m.meetings = make([]*meeting.Meeting, len(loaded))
+		for i := range loaded {
+			m.meetings[i] = &loaded[i]
+		}
+	}
+	if msgs, err := loadChatMessages(); err == nil {
+		m.chatMessages = msgs
+	}
 }
