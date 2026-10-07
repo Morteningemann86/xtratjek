@@ -59,12 +59,13 @@ No account, no cloud service.
 
 | | |
 |---|---|
-| macOS | `brew install iliorn/tap/tjek` |
+| macOS | `go install github.com/Morteningemann86/xtratjek@latest` |
 | Windows | `scoop install https://github.com/Morteningemann86/xtratjek/releases/latest/download/tjek.json` |
 | Linux / Windows binary | [Releases](https://github.com/Morteningemann86/xtratjek/releases) |
 | Anywhere Go runs | `go install github.com/Morteningemann86/xtratjek@latest` |
 
-tjek updates itself from Settings → "Update to latest release".
+tjek updates itself from Settings → "Update to latest release". `go install`
+names the command `xtratjek`.
 [docs/install.md](docs/install.md) covers building from source and verifying
 a download.
 

@@ -8,8 +8,8 @@ on:
 
 jobs:
   # The matrix is the platforms tjek actually ships: the release attaches a
-  # Linux and a Windows binary, and macOS installs from tagged source through
-  # the Homebrew tap. Testing only on Linux meant the Windows binary was first
+  # Linux and a Windows binary, and macOS installs from source with
+  # `go install`. Testing only on Linux meant the Windows binary was first
   # compiled by the release job — after the tag existed — and its
   # platform-specific paths (editor resolution, the notepad fallback, the
   # self-update file ops) were never run at all.
@@ -53,7 +53,7 @@ jobs:
   # Cross-compiles every shipped target from one runner, so a build break in a
   # GOOS-gated path is caught even when a matrix runner is unavailable or
   # queued. The first two are exactly what the release job attaches; the darwin
-  # pair is what Homebrew builds from source on both Apple architectures.
+  # pair is what `go install` builds on both Apple architectures.
   cross:
     runs-on: ubuntu-latest
     steps:

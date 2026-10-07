@@ -80,7 +80,7 @@ func newerReleaseServer(t *testing.T, tag string) {
 // names both versions and stops, so it is safe in a shell profile or a cron.
 func TestCLIUpdateCheckReportsWithoutInstalling(t *testing.T) {
 	if runtime.GOOS == "darwin" {
-		t.Skip("macOS is directed to Homebrew before the install path is reached")
+		t.Skip("macOS is directed to go install before the install path is reached")
 	}
 	withVersion(t, "v1.0.0")
 	newerReleaseServer(t, "v9.9.9")
@@ -100,7 +100,7 @@ func TestCLIUpdateCheckReportsWithoutInstalling(t *testing.T) {
 // like a failed update, so it says which flag carries it through instead.
 func TestCLIUpdateRefusesToPromptWithoutATTY(t *testing.T) {
 	if runtime.GOOS == "darwin" {
-		t.Skip("macOS is directed to Homebrew before the install path is reached")
+		t.Skip("macOS is directed to go install before the install path is reached")
 	}
 	if stdinIsTTY() {
 		t.Skip("test runner has a TTY on stdin; the prompt would block")

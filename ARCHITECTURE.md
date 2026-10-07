@@ -65,13 +65,13 @@ git push origin v1.10.0       # ← triggers the build + release
   changed: `tjek` (Linux x64), `tjek-linux-arm64`, `tjek.exe` (Windows
   x64), plus `SHA256SUMS`. `selfUpdateAsset(goos, goarch)` is the one map
   from platform to asset; a new build target needs a case there.
-- **macOS ships from source** through the `Iliorn/homebrew-tap` repository
-  (`brew install iliorn/tap/tjek`). The release workflow's `homebrew` job
-  bumps the formula's tarball and checksum, pushing with a deploy key scoped
-  to the tap (secret `HOMEBREW_TAP_DEPLOY_KEY`), so a release needs no step
-  after the tag. There is no AUR package: Arch uses the Linux binary. Do not
-  attach macOS binaries or `.app` bundles to releases; Homebrew installs are
-  pointed at Homebrew rather than having their managed files replaced.
+- **macOS installs from source** with `go install
+  github.com/Morteningemann86/xtratjek@latest`, which names the command
+  `xtratjek`; self-update on macOS prints that line (`planUpdate`) rather
+  than looking for an asset. There is no Homebrew tap and no AUR package:
+  Arch uses the Linux binary. Do not attach macOS binaries or `.app`
+  bundles to releases. A Homebrew-managed install is still recognised
+  (`isHomebrewCellarPath`) and pointed at `brew upgrade`, never replaced.
 - **The former names ship too.** tjek was called taskr, and an install from
   then fetches `taskr`, `taskr-linux-arm64`, `taskr.exe` or `taskr.json`, so
   the release attaches the same bytes under those names and lists them in
@@ -597,9 +597,7 @@ for it from this tab.
   cli_diagnose.go), the missing-ffmpeg error names the right install command
   for the platform (`ffmpegInstallHint`), and the Scoop manifest
   (`packaging/generate-packages.sh`) declares it as a dependency so
-  `scoop install tjek` pulls it in without a separate step — the Homebrew
-  tap (a different repository, `Iliorn/homebrew-tap`) does not yet do the
-  equivalent with `depends_on "ffmpeg"`. If "r" finds ffmpeg missing anyway,
+  `scoop install tjek` pulls it in without a separate step. If "r" finds ffmpeg missing anyway,
   it doesn't just show the hint — `ffmpegInstallCommand` resolves an actual
   command for this machine (`brew`/`winget`/`apt-get`/`dnf`/`pacman`, `sudo`
   prepended on Linux when it's on `PATH`), and `promptInstallFFmpeg` asks a
@@ -662,11 +660,6 @@ for it from this tab.
 
 ### Not done yet
 
-- **Homebrew doesn't install ffmpeg as a dependency.** The `Iliorn/homebrew-tap`
-  formula (bumped by `.github/workflows/release.yml`'s `homebrew` job) has no
-  `depends_on "ffmpeg"`, unlike the Scoop manifest here — so `brew install
-  iliorn/tap/tjek` doesn't pull it in the way `scoop install tjek` does. That
-  repository is out of this one's reach from here; it needs its own change.
 - **No CLI verbs.** Recording/review are interactive by nature, but a
   `tjek meeting add --notes=-` for piping in an existing transcript
   non-interactively would be a natural, low-risk addition.

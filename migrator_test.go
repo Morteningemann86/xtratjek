@@ -273,7 +273,7 @@ func TestOpenRefusesAStoreFromANewerBuild(t *testing.T) {
 	}
 	// The message has to carry both numbers: "which tjek do I need" is the
 	// first question it will be read to answer.
-	for _, want := range []string{"9999", "brew upgrade tjek", ".bak"} {
+	for _, want := range []string{"9999", "tjek update", ".bak"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error message missing %q: %v", want, err)
 		}

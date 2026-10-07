@@ -1060,7 +1060,7 @@ func selfUpdateAsset(goos, goarch string) (string, error) {
 		}
 		return "", fmt.Errorf("no release build for windows/%s ; install from source with `go install github.com/Morteningemann86/xtratjek@latest`", goarch)
 	case "darwin":
-		return "", fmt.Errorf("macOS updates are distributed via Homebrew; run `brew install iliorn/tap/tjek`")
+		return "", fmt.Errorf("there is no macOS release build; install from source with `go install github.com/Morteningemann86/xtratjek@latest`")
 	default:
 		return "", fmt.Errorf("self-update is not available for %s", goos)
 	}
@@ -1160,9 +1160,7 @@ var releaseAPIBase = "https://api.github.com"
 // This fork intentionally diverges from upstream (iliorn/tjek) rather than
 // tracking it, so self-update must point at this fork's own releases —
 // pointing it at upstream would offer to overwrite a custom build (Meetings,
-// the ffmpeg checks, …) with the original project's binary. There are no
-// releases here yet; self-update reports "no releases found" until one is
-// tagged, the same as any repo that hasn't cut one.
+// the ffmpeg checks, …) with the original project's binary.
 const releaseRepo = "Morteningemann86/xtratjek"
 
 // releaseAsset is one downloadable file attached to a release.

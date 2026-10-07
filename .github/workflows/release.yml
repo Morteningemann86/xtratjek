@@ -7,7 +7,7 @@ name: Release
 # in-app self-update fetches these exact names (selfUpdateAsset in helpers.go),
 # and an already-installed binary looks for the name it was built to expect, so
 # a name can be added but never renamed.
-# macOS is distributed from tagged source through Homebrew, not release assets.
+# macOS installs from source with `go install`, not from release assets.
 
 on:
   push:
@@ -115,44 +115,3 @@ jobs:
             echo "::warning::no CHANGELOG section for $V — falling back to generated notes"
             gh release create "$V" --title "$V" --generate-notes "${assets[@]}"
           fi
-
-  # macOS installs build from the tagged source through the Iliorn/homebrew-tap
-  # formula, which pins the tag's tarball and its checksum. Bumping both here
-  # means a release is finished when its tag is pushed. The workflow token
-  # cannot write to another repository, so the tap takes a deploy key scoped
-  # to that one repository (secret HOMEBREW_TAP_DEPLOY_KEY) rather than a
-  # personal token that could write to all of them.
-  homebrew:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Bump the Homebrew formula
-        env:
-          V: ${{ github.ref_name }}
-          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-        run: |
-          set -euo pipefail
-          url="https://github.com/Morteningemann86/xtratjek/archive/refs/tags/${V}.tar.gz"
-          sha="$(curl -fsSL "$url" | sha256sum | cut -d' ' -f1)"
-
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/tap
-          chmod 600 ~/.ssh/tap
-          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/tap -o IdentitiesOnly=yes"
-
-          git clone --depth 1 git@github.com:Iliorn/homebrew-tap.git tap
-          cd tap
-          sed -i -E \
-            -e "s|^(  url \")[^\"]*(\")$|\1${url}\2|" \
-            -e "s|^(  sha256 \")[^\"]*(\")$|\1${sha}\2|" \
-            Formula/tjek.rb
-          if git diff --quiet; then
-            echo "Formula/tjek.rb already points at ${V}"
-            exit 0
-          fi
-          git diff
-          git -c user.name="github-actions[bot]" \
-              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -am "tjek ${V}"
-          git push origin HEAD

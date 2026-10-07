@@ -3,15 +3,17 @@
 The [README](../README.md#install) has the one-line install for each
 platform. This page has the details.
 
-## macOS (Homebrew)
+## macOS
+
+There is no macOS release binary; build from source with Go
+([below](#with-go)):
 
 ```sh
-brew install iliorn/tap/tjek
+go install github.com/Morteningemann86/xtratjek@latest
 ```
 
-Homebrew builds the tagged source and installs the `tjek` command. Update
-with `brew update && brew upgrade tjek`; tjek recognises a Homebrew install
-and points you at that command rather than replacing Homebrew's files.
+Rerun it to update. Settings → "Update to latest release" says the same
+rather than replacing the binary.
 
 ## Windows (Scoop)
 
@@ -48,7 +50,8 @@ go install github.com/Morteningemann86/xtratjek@latest
 ```
 
 Builds from source on any platform Go supports, including ones the release
-page doesn't carry. Go checks every module against `sum.golang.org`, a public
+page doesn't carry. Go names the command after the module, so it installs as
+`xtratjek`; rename it or `alias tjek=xtratjek` to type `tjek`. Go checks every module against `sum.golang.org`, a public
 log that cannot be rewritten afterwards, which makes this the install with the
 strongest integrity guarantee.
 

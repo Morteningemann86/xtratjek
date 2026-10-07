@@ -196,7 +196,7 @@ func pendingMigrations(db *sql.DB) ([]migration, error) {
 	if len(all) > 0 {
 		if newest := all[len(all)-1].version; current > newest {
 			return nil, fmt.Errorf("%w: it is at schema %d and this build only knows %d.\n"+
-				"       Update tjek (Settings → \"Update to latest release\", or `brew upgrade tjek`).\n"+
+				"       Update tjek (Settings → \"Update to latest release\", or `tjek update`).\n"+
 				"       To go back to this version instead, stop anything using the store, copy the\n"+
 				"       newest tasks.db-pre-migration-*.bak over tasks.db and delete the -wal/-shm sidecars",
 				errSchemaTooNew, current, newest)

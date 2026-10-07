@@ -170,8 +170,8 @@ func planUpdate(current, latest string) (updateAction, string) {
 		return updateManaged, hint
 	}
 	if runtime.GOOS == "darwin" {
-		// Not from a keg, but macOS ships no release binary at all.
-		return updateManaged, "brew install iliorn/tap/tjek"
+		// macOS ships no release binary at all.
+		return updateManaged, "go install github.com/Morteningemann86/xtratjek@latest"
 	}
 	return updateAvailable, ""
 }
