@@ -68,8 +68,10 @@ func TestDiagnosticsReportsWhisperCLI(t *testing.T) {
 	if got.Status == statusFail {
 		t.Errorf("whisper-cli diagnostic should never fail the report, got %+v", got)
 	}
-	if got.Status == statusWarn && !strings.Contains(got.Detail, "whisper.cpp") {
-		t.Errorf("whisper-cli warning should point at whisper.cpp, got detail %q", got.Detail)
+	// The hint names the platform's package (Homebrew's whisper-cpp, apt's
+	// whisper.cpp, the project page elsewhere), so compare against it.
+	if got.Status == statusWarn && !strings.Contains(got.Detail, whisperCLIInstallHint()) {
+		t.Errorf("whisper-cli warning should carry the install hint %q, got detail %q", whisperCLIInstallHint(), got.Detail)
 	}
 }
 
