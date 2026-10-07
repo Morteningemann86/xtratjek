@@ -2,6 +2,7 @@ package aiprovider
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,24 +11,41 @@ import (
 	"testing"
 )
 
-// fakeWhisperCLI writes an executable shell script standing in for
-// whisper-cli, the same "don't require the real external tool" approach
-// helpers_test.go's TestDownloadReleaseAsset uses for a fake release
-// binary — this package has no business depending on whisper.cpp actually
-// being installed to run its tests.
-func fakeWhisperCLI(t *testing.T, script string) string {
+// fakeWhisperEnv names the role the test binary plays when it runs as
+// whisper-cli (see TestMain): the provider is pointed at the test binary
+// itself, so the fake runs on every OS without a shell or whisper.cpp.
+const fakeWhisperEnv = "AIPROVIDER_FAKE_WHISPER_CLI"
+
+func TestMain(m *testing.M) {
+	switch os.Getenv(fakeWhisperEnv) {
+	case "":
+		os.Exit(m.Run())
+	case "transcript":
+		fmt.Fprintln(os.Stderr, "whisper_init: loading model")
+		fmt.Println("  Hej, dette er en test.  ")
+	case "fail":
+		fmt.Fprintln(os.Stderr, "error: failed to load model")
+		os.Exit(1)
+	case "args":
+		fmt.Println(strings.Join(os.Args[1:], " "))
+	}
+	os.Exit(0)
+}
+
+// fakeWhisperCLI returns a whisper-cli stand-in that behaves as role:
+// "transcript", "fail" or "args" (echo the arguments it was given).
+func fakeWhisperCLI(t *testing.T, role string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "whisper-cli")
-	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+script), 0o755); err != nil {
+	t.Setenv(fakeWhisperEnv, role)
+	exe, err := os.Executable()
+	if err != nil {
 		t.Fatal(err)
 	}
-	return path
+	return exe
 }
 
 func TestLocalWhisperTranscribeSuccess(t *testing.T) {
-	bin := fakeWhisperCLI(t, `echo "whisper_init: loading model" >&2
-echo "  Hej, dette er en test.  "
-`)
+	bin := fakeWhisperCLI(t, "transcript")
 	p := &LocalWhisperProvider{BinPath: bin, ModelPath: "model.bin"}
 	got, err := p.Transcribe(context.Background(), "audio.wav")
 	if err != nil {
@@ -47,9 +65,7 @@ func TestLocalWhisperTranscribeNotFound(t *testing.T) {
 }
 
 func TestLocalWhisperTranscribeNonZeroExitSurfacesStderr(t *testing.T) {
-	bin := fakeWhisperCLI(t, `echo "error: failed to load model" >&2
-exit 1
-`)
+	bin := fakeWhisperCLI(t, "fail")
 	p := &LocalWhisperProvider{BinPath: bin, ModelPath: "model.bin"}
 	_, err := p.Transcribe(context.Background(), "audio.wav")
 	if err == nil || !strings.Contains(err.Error(), "failed to load model") {
@@ -58,8 +74,7 @@ exit 1
 }
 
 func TestLocalWhisperTranscribePassesLanguageFlag(t *testing.T) {
-	bin := fakeWhisperCLI(t, `echo "$@"
-`)
+	bin := fakeWhisperCLI(t, "args")
 	p := &LocalWhisperProvider{BinPath: bin, ModelPath: "model.bin", Language: "da"}
 	got, err := p.Transcribe(context.Background(), "audio.wav")
 	if err != nil {
@@ -84,8 +99,7 @@ func TestLocalWhisperTranscribePassesLanguageFlag(t *testing.T) {
 // 28-thread machine idle, more than doubling encode time for no reason —
 // see localwhisper.go's comment on the -t flag for the numbers.
 func TestLocalWhisperTranscribePassesThreadFlag(t *testing.T) {
-	bin := fakeWhisperCLI(t, `echo "$@"
-`)
+	bin := fakeWhisperCLI(t, "args")
 	p := &LocalWhisperProvider{BinPath: bin, ModelPath: "model.bin"}
 	got, err := p.Transcribe(context.Background(), "audio.wav")
 	if err != nil {

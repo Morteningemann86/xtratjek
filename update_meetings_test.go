@@ -781,10 +781,7 @@ func TestTranscribeSegmentCmdLocalWhisperSuccess(t *testing.T) {
 	if err := os.WriteFile(modelPath, []byte("fake model"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	fakeBin := filepath.Join(t.TempDir(), "whisper-cli")
-	if err := os.WriteFile(fakeBin, []byte("#!/bin/sh\necho transcribed text\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	fakeBin := fakeWhisperCLI(t, "transcribed text")
 	audioPath := filepath.Join(t.TempDir(), "seg-000.wav")
 	if err := os.WriteFile(audioPath, []byte("fake audio"), 0o644); err != nil {
 		t.Fatal(err)
@@ -805,4 +802,19 @@ func TestTranscribeSegmentCmdLocalWhisperSuccess(t *testing.T) {
 	if _, statErr := os.Stat(audioPath); !os.IsNotExist(statErr) {
 		t.Fatal("audio file should be deleted after a successful transcription")
 	}
+}
+
+// fakeWhisperTextEnv makes the test binary act as whisper-cli and print its
+// value (see TestMain), so the fake runs on every OS without a shell.
+const fakeWhisperTextEnv = "TJEK_TEST_FAKE_WHISPER_TEXT"
+
+// fakeWhisperCLI returns a whisper-cli stand-in that prints text.
+func fakeWhisperCLI(t *testing.T, text string) string {
+	t.Helper()
+	t.Setenv(fakeWhisperTextEnv, text)
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return exe
 }

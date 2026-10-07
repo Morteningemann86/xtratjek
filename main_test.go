@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -26,6 +27,12 @@ var testHome string
 // pointed at the real home — the exact accident this function exists to
 // prevent — so both are set.
 func TestMain(m *testing.M) {
+	// Run as the fake whisper-cli a test pointed the app at (fakeWhisperCLI),
+	// before anything else, since that process is not a test run.
+	if text, ok := os.LookupEnv(fakeWhisperTextEnv); ok {
+		fmt.Println(text)
+		os.Exit(0)
+	}
 	tmp, err := os.MkdirTemp("", "tjek-test-home")
 	if err != nil {
 		panic(err)
