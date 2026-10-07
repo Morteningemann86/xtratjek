@@ -213,6 +213,7 @@ var keymap = []binding{
 	// ── Chat ─────────────────────────────────────────────────────────────
 	{ctxChat, "enter", "chatsend", "send message", secChat, true, true},
 	{ctxChat, "y / n", "chatconfirm", "confirm / decline a proposed action", secChat, true, true},
+	{ctxChat, "esc", "chatreset", "reset the conversation (asks y/n)", secChat, true, true},
 	{ctxChat, "pgup/pgdn", "chatscroll", "scroll the conversation", secChat, false, false},
 	{ctxChat, "tab / shift+tab", "chattabs", "switch tabs", secChat, true, false},
 

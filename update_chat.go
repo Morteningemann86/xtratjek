@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -26,9 +27,9 @@ import (
 const chatScrollStep = 5
 
 // updateChatInput is modeChatInput's entire key handler. tab/shift+tab and
-// scrolling always work; everything else depends on whether a proposed
-// action is awaiting y/n (handleChatReply) — while one is, only y/n do
-// anything, so a stray keystroke can't be half-absorbed as the start of a
+// scrolling always work; everything else depends on whether a reset (esc)
+// or a proposed action (handleChatReply) is awaiting y/n — while one is,
+// only y/n (and esc, for the reset) do anything, so a stray keystroke can't be half-absorbed as the start of a
 // new message while the question is still open. Otherwise enter sends and
 // everything else is ordinary textarea editing, the same split
 // updateEditMeetingText makes between its own reserved keys and the rest.
@@ -36,9 +37,11 @@ func (m model) updateChatInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyMsg); ok {
 		switch key.String() {
 		case "tab":
+			m.chatConfirmReset = false
 			m.switchTab(m.boardCfg.nextTab(m.tab, 1))
 			return m, nil
 		case "shift+tab":
+			m.chatConfirmReset = false
 			m.switchTab(m.boardCfg.nextTab(m.tab, -1))
 			return m, nil
 		case "pgup":
@@ -46,6 +49,19 @@ func (m model) updateChatInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "pgdown":
 			m.chatScrollOffset = max(0, m.chatScrollOffset-chatScrollStep)
+			return m, nil
+		}
+		if m.chatConfirmReset {
+			switch key.String() {
+			case "y":
+				return m.resetChat()
+			case "n", "esc":
+				m.chatConfirmReset = false
+			}
+			return m, nil
+		}
+		if key.String() == "esc" {
+			m.chatConfirmReset = m.chatHasSomethingToReset()
 			return m, nil
 		}
 		if m.chatPendingAction != nil {
@@ -77,13 +93,57 @@ func (m model) sendChatMessage() (tea.Model, tea.Cmd) {
 	if text == "" || m.chatLoading {
 		return m, nil
 	}
+	if notice := m.chatMissingKeyNotice(); notice != "" {
+		// Keep the typed text: it can be sent once the key is added.
+		m.flashError(notice)
+		return m, clearErrAfter()
+	}
 	m.chatInput.Reset()
 	m.chatScrollOffset = 0
 	m.appendChatMessage("user", text)
 	m.chatLoading = true
 	snap := buildChatSnapshot(&m)
 	history := chatHistoryToTurns(m.chatMessages)
-	return m, chatReplyCmd(history, snap, m.aiProvider, m.aiKeys)
+	return m, chatReplyCmd(m.chatEpoch, history, snap, m.aiProvider, m.aiKeys)
+}
+
+// chatMissingKeyNotice says what to add in Settings when the configured
+// provider has no API key, or "" when it has one. The pane shows it in
+// place of the empty-conversation prompt and enter refuses to send, so a
+// message is never stored that no reply can follow.
+func (m model) chatMissingKeyNotice() string {
+	if _, err := aiprovider.New(m.aiProvider, m.aiKeys); !errors.Is(err, aiprovider.ErrNoAPIKey) {
+		return ""
+	}
+	return fmt.Sprintf(tr("No %s API key set. Add one in Settings (tab 7) under AI & Meetings to use Chat."),
+		aiprovider.DisplayName(m.aiProvider))
+}
+
+// chatHasSomethingToReset reports whether esc has anything to clear, so it
+// asks only when the answer matters.
+func (m model) chatHasSomethingToReset() bool {
+	return len(m.chatMessages) > 0 || m.chatPendingAction != nil || m.chatLoading ||
+		m.chatInput.Value() != ""
+}
+
+// resetChat is "y" on esc's confirm: delete the conversation, a pending action and the
+// typed text, and start over. Bumping chatEpoch orphans a reply still in
+// flight (handleChatReply drops it).
+func (m model) resetChat() (tea.Model, tea.Cmd) {
+	m.chatConfirmReset = false
+	m.chatEpoch++
+	m.chatMessages = nil
+	m.chatPendingAction = nil
+	m.chatPendingActionLabel = ""
+	m.chatLoading = false
+	m.chatScrollOffset = 0
+	m.chatInput.Reset()
+	if err := clearChatMessages(); err != nil {
+		m.flashError(fmt.Sprintf(tr("Error clearing chat: %v"), err))
+	} else {
+		m.flashInfo(tr("Chat cleared."))
+	}
+	return m, clearErrAfter()
 }
 
 // appendChatMessage adds msg to both the in-memory conversation and
@@ -103,6 +163,9 @@ func (m *model) appendChatMessage(role, content string) {
 // computed once here — see chatPendingActionLabel's doc comment), or a
 // plain reply (appended like any other message).
 func (m model) handleChatReply(msg chatReplyMsg) (tea.Model, tea.Cmd) {
+	if msg.epoch != m.chatEpoch {
+		return m, nil
+	}
 	m.chatLoading = false
 	switch {
 	case msg.err != nil:

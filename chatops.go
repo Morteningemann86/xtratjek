@@ -32,6 +32,7 @@ type chatReplyMsg struct {
 	text          string
 	pendingAction *aiprovider.ToolCall
 	err           error
+	epoch         int // the model's chatEpoch when the request started
 }
 
 // maxChatToolHops bounds how many read-tool round trips one reply can make
@@ -93,36 +94,43 @@ func firstActionCall(calls []aiprovider.ToolCall) (aiprovider.ToolCall, bool) {
 // and surface the first action call for confirmation. snap is a plain-value
 // snapshot of the user's data taken before this Cmd was built — the
 // goroutine this runs on must never read model.Store directly, since the
-// Update loop can be mutating it concurrently.
-func chatReplyCmd(history []aiprovider.Turn, snap chatSnapshot, provider string, keys aiprovider.Keys) tea.Cmd {
+// Update loop can be mutating it concurrently. The reply carries epoch
+// back so handleChatReply can drop one that outlived a reset.
+func chatReplyCmd(epoch int, history []aiprovider.Turn, snap chatSnapshot, provider string, keys aiprovider.Keys) tea.Cmd {
 	return func() tea.Msg {
-		p, err := aiprovider.New(provider, keys)
+		msg := chatReply(history, snap, provider, keys)
+		msg.epoch = epoch
+		return msg
+	}
+}
+
+func chatReply(history []aiprovider.Turn, snap chatSnapshot, provider string, keys aiprovider.Keys) chatReplyMsg {
+	p, err := aiprovider.New(provider, keys)
+	if err != nil {
+		return chatReplyMsg{err: err}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), aiRequestTimeout)
+	defer cancel()
+	system := aiprovider.ChatSystemPrompt(time.Now().Format("2006-01-02"))
+	for hop := 0; hop < maxChatToolHops; hop++ {
+		result, err := p.Chat(ctx, system, history, chatToolSpecs)
 		if err != nil {
 			return chatReplyMsg{err: err}
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), aiRequestTimeout)
-		defer cancel()
-		system := aiprovider.ChatSystemPrompt(time.Now().Format("2006-01-02"))
-		for hop := 0; hop < maxChatToolHops; hop++ {
-			result, err := p.Chat(ctx, system, history, chatToolSpecs)
-			if err != nil {
-				return chatReplyMsg{err: err}
-			}
-			if len(result.ToolCalls) == 0 {
-				return chatReplyMsg{text: result.Text}
-			}
-			history = append(history, aiprovider.Turn{Role: "assistant", ToolCalls: result.ToolCalls})
-			if call, ok := firstActionCall(result.ToolCalls); ok {
-				return chatReplyMsg{pendingAction: &call}
-			}
-			for _, call := range result.ToolCalls {
-				history = append(history, aiprovider.Turn{
-					Role: "tool", ToolCallID: call.ID, Content: runReadTool(call, snap, time.Now()),
-				})
-			}
+		if len(result.ToolCalls) == 0 {
+			return chatReplyMsg{text: result.Text}
 		}
-		return chatReplyMsg{err: errTooManyToolHops}
+		history = append(history, aiprovider.Turn{Role: "assistant", ToolCalls: result.ToolCalls})
+		if call, ok := firstActionCall(result.ToolCalls); ok {
+			return chatReplyMsg{pendingAction: &call}
+		}
+		for _, call := range result.ToolCalls {
+			history = append(history, aiprovider.Turn{
+				Role: "tool", ToolCallID: call.ID, Content: runReadTool(call, snap, time.Now()),
+			})
+		}
 	}
+	return chatReplyMsg{err: errTooManyToolHops}
 }
 
 // ── Describing a pending action for the y/n prompt ──────────────────────────

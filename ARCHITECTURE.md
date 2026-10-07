@@ -896,13 +896,19 @@ rather than summarization.
   this plain-text log, so there is no "resume an in-flight tool loop after
   a restart" problem to solve — if the app closes mid-confirmation, nothing
   was ever applied, so nothing is lost but the one pending question.
+- **esc resets the thread** (`resetChat`) after a y/n
+  (`chatConfirmReset`, inline like an action proposal, since the reset
+  has no undo): the stored log, a pending action and the typed text all
+  go. `chatEpoch` is bumped and stamped on
+  each `chatReplyMsg`, so a reply still in flight is dropped rather than
+  landing in the fresh thread.
+- **No key, no send.** While the configured provider has no API key
+  (`chatMissingKeyNotice`, matching `aiprovider.ErrNoAPIKey`), the pane
+  says which key to add under Settings → AI & Meetings, and enter keeps
+  the typed text instead of storing a message no reply can follow.
 
 ### Not done yet
 
-- **No "clear history" command.** One continuous thread was the simplest
-  fit for "ask about my stuff"; a command to start a fresh thread would be
-  a natural, low-risk follow-up if the single running log ever becomes
-  unwieldy.
 - **No prose alongside a proposed action in the same turn** — see the
   trade-off noted above. Recovering it would need letting the loop continue
   past an action call and synthesizing a combined message, which is more

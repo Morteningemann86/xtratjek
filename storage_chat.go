@@ -33,6 +33,19 @@ func saveChatMessageIn(h *sql.DB, msg chatMessage) error {
 	return err
 }
 
+// clearChatMessages deletes the whole conversation (esc on the Chat tab).
+func clearChatMessages() error {
+	if err := openStore(); err != nil {
+		return err
+	}
+	return clearChatMessagesIn(db)
+}
+
+func clearChatMessagesIn(h *sql.DB) error {
+	_, err := h.Exec(`DELETE FROM chat_messages`)
+	return err
+}
+
 // loadChatMessages returns the whole conversation, oldest first.
 func loadChatMessages() ([]chatMessage, error) {
 	if err := openStore(); err != nil {

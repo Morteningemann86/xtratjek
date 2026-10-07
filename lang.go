@@ -840,6 +840,11 @@ var daTranslations = map[string]string{
 	"confirm / decline a proposed action":                 "bekræft / afvis en foreslået handling",
 	"scroll the conversation":                             "rul i samtalen",
 	"switch tabs":                                         "skift faneblad",
+	"reset the conversation (asks y/n)":                   "nulstil samtalen (spørger y/n)",
+	"Clear the whole conversation? This can't be undone":  "Ryd hele samtalen? Det kan ikke fortrydes",
+	"Chat cleared.":                                       "Chatten er ryddet.",
+	"Error clearing chat: %v":                             "Fejl ved rydning af chat: %v",
+	"No %s API key set. Add one in Settings (tab 7) under AI & Meetings to use Chat.": "Ingen %s API-nøgle angivet. Tilføj en under Indstillinger (faneblad 7) i AI & Møder for at bruge Chat.",
 
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Deadlinepres",
@@ -1634,6 +1639,11 @@ var deTranslations = map[string]string{
 	"confirm / decline a proposed action":                 "eine vorgeschlagene Aktion bestätigen / ablehnen",
 	"scroll the conversation":                             "durch die Unterhaltung scrollen",
 	"switch tabs":                                         "Reiter wechseln",
+	"reset the conversation (asks y/n)":                   "Unterhaltung zurücksetzen (fragt y/n)",
+	"Clear the whole conversation? This can't be undone":  "Ganze Unterhaltung löschen? Das lässt sich nicht rückgängig machen",
+	"Chat cleared.":                                       "Chat geleert.",
+	"Error clearing chat: %v":                             "Fehler beim Leeren des Chats: %v",
+	"No %s API key set. Add one in Settings (tab 7) under AI & Meetings to use Chat.": "Kein %s-API-Schlüssel gesetzt. Füge unter Einstellungen (Reiter 7) bei KI & Meetings einen hinzu, um den Chat zu nutzen.",
 
 	// ── Sequencer / Settings rows ──
 	"Deadline pressure":         "Fristendruck",

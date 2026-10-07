@@ -602,6 +602,14 @@ type model struct {
 	// rebuilding that on every View() would be wasted work for a label that
 	// cannot change while the prompt is on screen.
 	chatPendingActionLabel string
+	// chatEpoch counts conversation resets (esc). chatReplyCmd stamps its
+	// reply with the epoch it started in, and handleChatReply drops one from
+	// an earlier epoch, so a reply still in flight when the user resets
+	// cannot land in the fresh conversation.
+	chatEpoch int
+	// chatConfirmReset is true while esc's "clear the conversation?" waits
+	// for y/n (updateChatInput). The reset cannot be undone, so it asks.
+	chatConfirmReset bool
 }
 
 func initialModel(repo Repository) model {

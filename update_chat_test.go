@@ -11,8 +11,10 @@ import (
 // switchToChat drives the real "9" keypress rather than poking m.tab/m.mode
 // directly, so these tests also exercise switchTab's mode wiring (model.go's
 // modeChatInput doc comment) instead of assuming it.
+// It also sets an API key, since enter refuses to send without one.
 func switchToChat(t *testing.T, m model) model {
 	t.Helper()
+	m.aiKeys.Anthropic = "test-key"
 	m = sendKey(t, m, "9")
 	if m.tab != tabChat || m.mode != modeChatInput {
 		t.Fatalf(`after "9": tab=%v mode=%v, want tabChat/modeChatInput`, m.tab, m.mode)
@@ -249,5 +251,151 @@ func TestScriptChatCompleteTaskConfirmed(t *testing.T) {
 	last := lastChatMessage(t, m)
 	if !strings.Contains(last.Content, "Ship the report") {
 		t.Fatalf("confirmation message = %+v", last)
+	}
+}
+
+func TestScriptChatEscResetsTheConversation(t *testing.T) {
+	m := modelWithTasks(t)
+	m = switchToChat(t, m)
+	m = script(t, m, "hi", "enter")
+	next, _ := m.Update(chatReplyMsg{text: "Hello!"})
+	m = next.(model)
+	m = sendKey(t, m, "half-typed")
+
+	m = sendKey(t, m, "esc")
+	if !m.chatConfirmReset || len(m.chatMessages) != 2 {
+		t.Fatalf("esc should ask before clearing: confirm=%v messages=%d", m.chatConfirmReset, len(m.chatMessages))
+	}
+	m = sendKey(t, m, "y")
+	if len(m.chatMessages) != 0 || m.chatInput.Value() != "" {
+		t.Fatalf("after esc: messages=%+v input=%q, want both empty", m.chatMessages, m.chatInput.Value())
+	}
+	if m.tab != tabChat || m.mode != modeChatInput {
+		t.Fatalf("esc left the chat: tab=%v mode=%v", m.tab, m.mode)
+	}
+	saved, err := loadChatMessages()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(saved) != 0 {
+		t.Fatalf("loadChatMessages() after esc = %+v, want none", saved)
+	}
+}
+
+func TestScriptChatEscClearsAPendingAction(t *testing.T) {
+	m := modelWithTasks(t)
+	m = switchToChat(t, m)
+	m = script(t, m, "finish it", "enter")
+	call := aiprovider.ToolCall{ID: "c", Name: toolCompleteTask, Arguments: map[string]any{"id": "x"}}
+	next, _ := m.Update(chatReplyMsg{pendingAction: &call})
+	m = next.(model)
+
+	m = script(t, m, "esc", "y")
+	if m.chatPendingAction != nil {
+		t.Fatal("esc should drop the pending action")
+	}
+	m = sendKey(t, m, "y")
+	if m.chatInput.Value() != "y" {
+		t.Fatalf(`after reset "y" should be typed, got input %q`, m.chatInput.Value())
+	}
+}
+
+func TestScriptChatReplyFromBeforeAResetIsDropped(t *testing.T) {
+	m := modelWithTasks(t)
+	m = switchToChat(t, m)
+	m = script(t, m, "hi", "enter")
+	stale := m.chatEpoch
+	m = script(t, m, "esc", "y")
+
+	next, _ := m.Update(chatReplyMsg{text: "late answer", epoch: stale})
+	m = next.(model)
+	if len(m.chatMessages) != 0 {
+		t.Fatalf("a reply from before the reset landed: %+v", m.chatMessages)
+	}
+}
+
+func TestScriptChatWithoutAKeyPointsAtSettings(t *testing.T) {
+	m := modelWithTasks(t)
+	m = switchToChat(t, m)
+	m.aiKeys = aiprovider.Keys{}
+	m.aiProvider = aiprovider.ProviderMistral
+
+	view := m.renderChatMessages(80)
+	if !strings.Contains(view, "Mistral") || !strings.Contains(view, "Settings") {
+		t.Fatalf("chat pane without a key = %q, want it to name the provider and Settings", view)
+	}
+
+	m = script(t, m, "hi", "enter")
+	if len(m.chatMessages) != 0 || m.chatLoading {
+		t.Fatalf("enter without a key sent anyway: messages=%+v loading=%v", m.chatMessages, m.chatLoading)
+	}
+	if m.chatInput.Value() != "hi" {
+		t.Fatalf("typed text should be kept, got %q", m.chatInput.Value())
+	}
+	if !strings.Contains(m.err, "Settings") {
+		t.Fatalf("m.err = %q, want it to point at Settings", m.err)
+	}
+
+	m.aiKeys.Mistral = "k"
+	if strings.Contains(m.renderChatMessages(80), "Settings") {
+		t.Fatal("notice should disappear once the key is set")
+	}
+}
+
+func TestScriptChatResetConfirmCanBeDeclined(t *testing.T) {
+	for _, decline := range []string{"n", "esc"} {
+		m := modelWithTasks(t)
+		m = switchToChat(t, m)
+		m = script(t, m, "hi", "enter")
+		next, _ := m.Update(chatReplyMsg{text: "Hello!"})
+		m = next.(model)
+
+		m = script(t, m, "esc", "x", decline)
+		if m.chatConfirmReset {
+			t.Fatalf("%q should close the reset prompt", decline)
+		}
+		if len(m.chatMessages) != 2 {
+			t.Fatalf("%q kept %d messages, want 2", decline, len(m.chatMessages))
+		}
+		if m.chatInput.Value() != "" {
+			t.Fatalf("keys pressed while the prompt was open were typed: %q", m.chatInput.Value())
+		}
+		saved, err := loadChatMessages()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(saved) != 2 {
+			t.Fatalf("%q: stored messages = %d, want 2", decline, len(saved))
+		}
+		if decline == "n" && !strings.Contains(m.renderChatMessages(80), "Hello!") {
+			t.Fatal("conversation should still render after declining")
+		}
+	}
+}
+
+func TestScriptChatResetPromptShowsInThePane(t *testing.T) {
+	m := modelWithTasks(t)
+	m = switchToChat(t, m)
+	m = script(t, m, "hi", "enter", "esc")
+	if !strings.Contains(m.renderChatMessages(80), "y/n") {
+		t.Fatalf("reset prompt not rendered: %q", m.renderChatMessages(80))
+	}
+}
+
+func TestScriptChatEscOnAnEmptyChatDoesNotAsk(t *testing.T) {
+	m := modelWithTasks(t)
+	m = switchToChat(t, m)
+	m = sendKey(t, m, "esc")
+	if m.chatConfirmReset {
+		t.Fatal("nothing to clear, so esc should not ask")
+	}
+}
+
+func TestScriptChatTabDropsTheResetPrompt(t *testing.T) {
+	m := modelWithTasks(t)
+	m = switchToChat(t, m)
+	m = script(t, m, "hi", "esc", "tab")
+	if m.chatConfirmReset {
+		t.Fatal("leaving the tab should drop the reset prompt")
 	}
 }

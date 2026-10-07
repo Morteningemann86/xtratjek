@@ -27,9 +27,11 @@ func chatRoleLabel(role string) string {
 
 // renderChatMessages renders the conversation plus a pending action line,
 // if any — not the input box, which is a live widget (textarea.View()),
-// appended separately by buildChatContent.
+// appended separately by buildChatContent. A missing API key's notice goes
+// last, next to the input, so it stays in view however long the history.
 func (m model) renderChatMessages(w int) string {
-	if len(m.chatMessages) == 0 && m.chatPendingAction == nil && !m.chatLoading {
+	notice := m.chatMissingKeyNotice()
+	if len(m.chatMessages) == 0 && m.chatPendingAction == nil && !m.chatLoading && notice == "" && !m.chatConfirmReset {
 		return normalStyle.Render(tr("  Ask about your tasks, projects, or meetings."))
 	}
 	var lines []string
@@ -41,10 +43,17 @@ func (m model) renderChatMessages(w int) string {
 		lines = append(lines, "")
 	}
 	switch {
+	case m.chatConfirmReset:
+		lines = append(lines, confirmStyle.Render("  "+tr("Clear the whole conversation? This can't be undone")+" — y/n"))
 	case m.chatPendingAction != nil:
 		lines = append(lines, confirmStyle.Render("  "+m.chatPendingActionLabel+" — y/n"))
 	case m.chatLoading:
 		lines = append(lines, dimStyle.Render("  "+tr("thinking…")))
+	}
+	if notice != "" {
+		for _, ln := range wrapPlain(notice, w-2) {
+			lines = append(lines, overdueStyle.Render("  "+ln))
+		}
 	}
 	return strings.TrimRight(strings.Join(lines, "\n"), "\n")
 }
