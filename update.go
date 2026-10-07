@@ -236,6 +236,8 @@ func (m model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleChatReply(msg)
 	case whisperModelDownloadDoneMsg:
 		return m.handleWhisperModelDownloadDone(msg)
+	case whisperCLIInstallFinishedMsg:
+		return m.handleWhisperCLIInstallFinished(msg)
 	case segmentClosedMsg:
 		return m.handleSegmentClosed(msg)
 	case segmentTranscribedMsg:
@@ -2245,12 +2247,75 @@ func (m *model) toggleUseLocalWhisper() tea.Cmd {
 		m.persistSettings()
 		return nil
 	}
+	if _, ok := resolveWhisperBinPath(m.whisperBinOverride); !ok {
+		return m.promptInstallWhisperCLI()
+	}
 	if present, _ := whisperModelStatus(); present {
 		m.useLocalWhisper = true
 		m.persistSettings()
 		return nil
 	}
 	return m.promptDownloadWhisperModel()
+}
+
+// promptInstallWhisperCLI is toggleUseLocalWhisper's own detour when
+// whisper-cli isn't found yet — the same y/n-before-any-system-modifying-
+// action gate promptInstallFFmpeg (update_meetings.go) uses, just resumed
+// into continuing the on/off toggle (confirmInstallWhisperCLI) rather than
+// a specific recording afterward. ok is false when no installer this
+// knows how to drive is on PATH (see whisperCLIInstallCommand), in which
+// case this falls back to the same copy-paste hint whisper-cli-not-found
+// shows everywhere else.
+func (m *model) promptInstallWhisperCLI() tea.Cmd {
+	name, args, ok := whisperCLIInstallCommand()
+	if !ok {
+		m.flashError(fmt.Sprintf(tr("whisper-cli not found — %s"), whisperCLIInstallHint()))
+		return clearErrAfter()
+	}
+	m.mode = modeConfirm
+	m.confirmMsg = fmt.Sprintf(tr("whisper-cli isn't installed. Run '%s' now? (y/n)"),
+		strings.Join(append([]string{name}, args...), " "))
+	m.confirmOnYes = (*model).confirmInstallWhisperCLI
+	return nil
+}
+
+// confirmInstallWhisperCLI is modeConfirm's y/n action for
+// promptInstallWhisperCLI — it re-resolves the command rather than
+// threading it through confirmMsg, so what runs is always freshly checked
+// against PATH, not a stale string, the same reasoning
+// confirmInstallFFmpeg follows.
+func (m *model) confirmInstallWhisperCLI() tea.Cmd {
+	name, args, ok := whisperCLIInstallCommand()
+	if !ok {
+		m.flashError(fmt.Sprintf(tr("whisper-cli not found — %s"), whisperCLIInstallHint()))
+		return clearErrAfter()
+	}
+	return whisperCLIInstallCmd(name, args)
+}
+
+// handleWhisperCLIInstallFinished resumes toggleUseLocalWhisper's own
+// on-flow once whisper-cli is confirmed to actually be on PATH — exit 0
+// doesn't guarantee it landed (a declined sudo prompt can still exit
+// clean), so this re-checks rather than trusting the exit code alone, the
+// same reasoning handleFFmpegInstallFinished uses. On success it continues
+// exactly where toggleUseLocalWhisper would have: straight on if the model
+// is already there, or into the same download confirm if not.
+func (m model) handleWhisperCLIInstallFinished(msg whisperCLIInstallFinishedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.flashError(fmt.Sprintf(tr("whisper-cli install failed: %v"), msg.err))
+		return m, clearErrAfter()
+	}
+	if _, ok := resolveWhisperBinPath(m.whisperBinOverride); !ok {
+		m.flashError(tr("whisper-cli still isn't on PATH after install — see the output above"))
+		return m, clearErrAfter()
+	}
+	if present, _ := whisperModelStatus(); present {
+		m.useLocalWhisper = true
+		m.persistSettings()
+		m.flashSuccess(tr("whisper-cli installed"))
+		return m, clearErrAfter()
+	}
+	return m, m.promptDownloadWhisperModel()
 }
 
 // promptDownloadWhisperModel is shared by the on/off toggle (turning it on

@@ -737,29 +737,38 @@ afterthought.
   (mirroring recordings' own `<data>/recordings/<meetingID>/`), never a
   stored Settings value — there's exactly one file this feature ever
   wants.
-- **The `whisper-cli` binary is detected, not auto-installed.** Unlike
-  `ffmpeg`, whisper.cpp has no confirmed-reliable "one binary per OS, every
-  release" asset to mirror self-update's own download with, and
-  package-manager coverage is uneven (Homebrew's `whisper-cpp` formula is
-  a safe bet; apt/dnf/pacman/winget are not verified) — so
-  `resolveWhisperBinPath` only takes a Settings override
-  (`WhisperBinOverride`, trusted unconditionally, the same way
-  `ffmpegInput`'s override is) or an exact `exec.LookPath("whisper-cli")`
-  on PATH. The older `main` binary name is deliberately *not*
-  auto-discovered this way: "main" is common enough as some unrelated
-  tool's own build output that finding one on PATH would be a coincidence,
-  not a real signal, and blindly shelling out to it would be a real risk
-  for a convenience fallback not worth taking.
+- **The `whisper-cli` binary is detected first, and only auto-installed on
+  the package managers actually verified to carry it.** Unlike `ffmpeg`,
+  whisper.cpp has no confirmed-reliable "one binary per OS, every release"
+  asset to mirror self-update's own download with, so this isn't a blanket
+  `ffmpegInstallCommand`-style guess: `resolveWhisperBinPath` takes a
+  Settings override (`WhisperBinOverride`, trusted unconditionally, the
+  same way `ffmpegInput`'s override is) or an exact
+  `exec.LookPath("whisper-cli")` on PATH; the older `main` binary name is
+  deliberately *not* auto-discovered this way, since "main" is common
+  enough as some unrelated tool's own build output that finding one on
+  PATH would be a coincidence, not a real signal, and blindly shelling out
+  to it would be a real risk for a convenience fallback not worth taking.
+  When it's missing, `whisperCLIInstallCommand` (`localwhisper.go`) only
+  offers a real install command for Homebrew (`brew install whisper-cpp`)
+  and apt (`apt-get install whisper.cpp` — confirmed by hand on Ubuntu to
+  install a `whisper-cli` binary with no further setup) — both verified,
+  unlike `dnf`/`pacman`/`winget`, which still only get the copy-paste hint
+  pointing at the project's GitHub. Toggling the setting on checks the
+  binary before the model and offers to install whichever is missing,
+  same y/n gate as the model download (next bullet) and the same
+  `tea.ExecProcess` terminal hand-off `ffmpegInstallCmd` already uses.
 - **Turning the setting on asks first, the same way installing ffmpeg
   does.** With no model on disk yet, cycling "Use local Whisper" on opens
   the same y/n confirm (`modeConfirm`) every other system-affecting action
   in this app uses before running — declining leaves the setting off
   rather than silently claiming to be usable. Turning it off never deletes
-  the model; there's no reason to throw away a 574MB download over a
-  toggle flip. A separate status/action row (`settingWhisperModelStatus`,
-  the same value-row-plus-do-it-row split `settingSyncServer`/
-  `settingSyncNow` already use) can fetch the model ahead of time or
-  re-fetch it after a corrupt/partial download, independent of the toggle.
+  the model or uninstalls the binary; there's no reason to throw either
+  away over a toggle flip. A separate status/action row
+  (`settingWhisperModelStatus`, the same value-row-plus-do-it-row split
+  `settingSyncServer`/`settingSyncNow` already use) can fetch the model
+  ahead of time or re-fetch it after a corrupt/partial download,
+  independent of the toggle.
 - **No silent fallback to OpenAI on a local failure.** Someone who turned
   this on did it for privacy/offline/cost reasons; quietly phoning home on
   failure would undo the one thing they asked for.
@@ -776,20 +785,32 @@ afterthought.
 
 ### Not done yet
 
-- **No auto-install of the `whisper-cli` binary itself** — see above;
-  needs real per-platform package-availability verification first.
+- **`dnf`/`pacman`/`winget` still only get the copy-paste hint, not a real
+  install command** — `whisperCLIInstallCommand` only auto-installs on
+  Homebrew and apt, the two verified so far; extending it further needs
+  the same by-hand verification apt just got, not a guess.
 - **No live download progress** — a static "downloading…" message for the
   whole model fetch, not a percentage. `downloadReleaseAsset` has the same
   gap today.
 - **No model/quantization picker** — exactly `large-v3-turbo` q5_0, the
   one this was built for.
-- **CPU performance on a real "average office laptop" is unverified.**
-  `large-v3-turbo` is meaningfully faster than plain `large-v3` by design,
-  but nobody has timed a real multi-minute chunk on non-benchmark hardware
-  yet.
-- **No GPU acceleration path** (Vulkan/CUDA whisper.cpp builds) —
-  CPU-only, matching the "average employee's workstation" framing this
-  feature started from.
+- **CPU encoding is measurably slower than real-time, even on strong
+  hardware.** Measured by hand against the real downloaded model on a
+  28-thread machine: whisper-cli's own default of 4 threads left most of
+  the machine idle (`Transcribe`'s `-t` flag, added after finding this,
+  passes `runtime.NumCPU()` instead — 3 seconds of audio went from 16.3s
+  to 5.9s). Even fixed, that's still ~2x slower than real-time on that
+  machine, which extrapolates to roughly 10 minutes to transcribe a single
+  5-minute `recordSegmentDuration` chunk — meaningfully behind the
+  "transcript visible well before the meeting ends" goal the chunked
+  pipeline was built for, and worse again on a typical weaker laptop.
+  `large-v3-turbo` is accurate, not fast enough on CPU alone to feel live;
+  it's realistically an after-the-fact tool on hardware like this one, not
+  a real-time companion.
+- **No GPU acceleration path** (Vulkan/CUDA whisper.cpp builds) — the
+  previous bullet's numbers are exactly the gap a GPU build would close,
+  but it's CPU-only for now, matching the "average employee's workstation"
+  framing this feature started from.
 
 ## Chat
 

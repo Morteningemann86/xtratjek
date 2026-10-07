@@ -237,6 +237,66 @@ func whisperCLIInstallHint() string {
 	}
 }
 
+// whisperCLIInstallCommand resolves an actual command to run, the same way
+// ffmpegInstallCommand (audiorecorder.go) does for ffmpeg — but only for
+// the two package managers whisperCLIInstallHint has actually verified
+// carry it: Homebrew's whisper-cpp formula, and apt's whisper.cpp package
+// (confirmed by hand on Ubuntu to install a whisper-cli binary with no
+// further setup needed). dnf/pacman/winget are deliberately not guessed
+// at here either — ok is false there, and the caller falls back to the
+// same copy-paste hint.
+func whisperCLIInstallCommand() (name string, args []string, ok bool) {
+	switch runtime.GOOS {
+	case "darwin":
+		if !commandAvailable("brew") {
+			return "", nil, false
+		}
+		return "brew", []string{"install", "whisper-cpp"}, true
+	case "linux":
+		mgr := "apt-get"
+		if !commandAvailable(mgr) {
+			mgr = "apt"
+		}
+		if !commandAvailable(mgr) {
+			return "", nil, false
+		}
+		installArgs := []string{"install", "-y", "whisper.cpp"}
+		if commandAvailable("sudo") {
+			return "sudo", append([]string{mgr}, installArgs...), true
+		}
+		// No sudo binary at all — most likely already root (a container),
+		// so run the package manager directly rather than failing outright.
+		return mgr, installArgs, true
+	default:
+		return "", nil, false
+	}
+}
+
+// whisperCLIInstallFinishedMsg reports whisperCLIInstallCmd's install
+// command exiting — err is only a launch failure; a non-zero exit from
+// the command itself is not treated as an error here, the same reasoning
+// ffmpegInstallFinishedMsg follows: exit 0 doesn't guarantee success (a
+// declined sudo prompt can exit clean) any more than a non-zero exit
+// guarantees failure, so the caller re-checks PATH either way rather than
+// trusting the exit code.
+type whisperCLIInstallFinishedMsg struct{ err error }
+
+// whisperCLIInstallCmd hands the terminal to the install command the same
+// way ffmpegInstallCmd (meetingops.go) and execEditor do — so sudo's
+// password prompt, or brew's own output, appears directly in the terminal
+// tjek is already running in rather than being hidden or run blind. This
+// is a system-modifying action, so it only ever runs after the explicit
+// y/n confirm in update.go's promptInstallWhisperCLI — never silently.
+func whisperCLIInstallCmd(name string, args []string) tea.Cmd {
+	c := exec.Command(name, args...)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		return whisperCLIInstallFinishedMsg{err: err}
+	})
+}
+
 // whisperModelDownloadDoneMsg reports downloadWhisperModelCmd finishing —
 // err nil on success, in which case whisperModelStatus will now report the
 // model present.

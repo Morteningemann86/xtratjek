@@ -565,6 +565,123 @@ func TestCleanupOrphanedRecordingsRemovesLeftoverAudio(t *testing.T) {
 	}
 }
 
+// TestToggleUseLocalWhisperWithoutWhisperCLIOffersToInstallIt mirrors
+// TestScriptRecordWithoutFFmpegOffersToInstallIt for the other external
+// binary this app shells out to: enabling the setting with whisper-cli
+// missing must prompt before running anything, not flip the bool and fail
+// silently later.
+func TestToggleUseLocalWhisperWithoutWhisperCLIOffersToInstallIt(t *testing.T) {
+	if _, err := exec.LookPath("whisper-cli"); err == nil {
+		t.Skip("whisper-cli is installed in this environment; the not-found path can't be exercised here")
+	}
+	m := settingsModel(t)
+	m.settingsCursor = settingUseLocalWhisper
+
+	m = sendKey(t, m, "enter")
+	if m.mode != modeConfirm {
+		t.Fatalf("after enabling with no whisper-cli: mode = %v, want modeConfirm", m.mode)
+	}
+	if !strings.Contains(m.confirmMsg, "whisper-cli") {
+		t.Fatalf("confirmMsg = %q, want it to mention whisper-cli", m.confirmMsg)
+	}
+	if m.confirmOnYes == nil {
+		t.Fatal("confirmOnYes is nil; 'y' would do nothing")
+	}
+	if m.useLocalWhisper {
+		t.Fatal("useLocalWhisper must not flip true before the install prompt is answered")
+	}
+
+	// "n" backs out through the generic modeConfirm decline path.
+	m = sendKey(t, m, "n")
+	if m.mode != modeNormal {
+		t.Fatalf("after 'n': mode = %v, want modeNormal", m.mode)
+	}
+	if m.confirmOnYes != nil {
+		t.Fatal("confirmOnYes should be cleared after declining")
+	}
+}
+
+// TestToggleUseLocalWhisperWhenCLIPresentButModelMissing is the
+// inverse-skip-condition sibling of the test above — it runs whenever
+// whisper-cli *is* installed, verifying the chain falls through to the
+// model-download prompt rather than the whisper-cli-install one once the
+// binary check passes. settingsModel's fresh, isolated home guarantees no
+// model file exists regardless of what's actually downloaded on this
+// machine for real use.
+func TestToggleUseLocalWhisperWhenCLIPresentButModelMissing(t *testing.T) {
+	if _, err := exec.LookPath("whisper-cli"); err != nil {
+		t.Skip("whisper-cli is not installed in this environment")
+	}
+	m := settingsModel(t)
+	m.settingsCursor = settingUseLocalWhisper
+
+	m = sendKey(t, m, "enter")
+	if m.mode != modeConfirm {
+		t.Fatalf("mode = %v, want modeConfirm", m.mode)
+	}
+	if strings.Contains(m.confirmMsg, "whisper-cli") {
+		t.Fatalf("confirmMsg = %q, want the model-download prompt, not the whisper-cli install one", m.confirmMsg)
+	}
+	if !strings.Contains(m.confirmMsg, "Whisper model") {
+		t.Fatalf("confirmMsg = %q, want it to mention the Whisper model", m.confirmMsg)
+	}
+}
+
+// TestToggleUseLocalWhisperWhenBothPresentEnablesDirectly covers the case
+// neither install prompt applies to: both the binary and the model are
+// already there, so enabling the setting needs no confirm at all.
+func TestToggleUseLocalWhisperWhenBothPresentEnablesDirectly(t *testing.T) {
+	if _, err := exec.LookPath("whisper-cli"); err != nil {
+		t.Skip("whisper-cli is not installed in this environment")
+	}
+	m := settingsModel(t)
+	modelPath, err := whisperModelPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modelPath, []byte("fake model"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m.settingsCursor = settingUseLocalWhisper
+
+	m = sendKey(t, m, "enter")
+	if m.mode != modeNormal {
+		t.Fatalf("mode = %v, want modeNormal (no prompt needed)", m.mode)
+	}
+	if !m.useLocalWhisper {
+		t.Fatal("useLocalWhisper should be true when both the binary and model are already present")
+	}
+}
+
+// TestHandleWhisperCLIInstallFinished mirrors TestHandleFFmpegInstallFinished:
+// the two outcomes that don't require an actual package manager run. The
+// success-and-resume path needs whisper-cli really installed partway
+// through and is checked by hand instead, same as that test's own note.
+func TestHandleWhisperCLIInstallFinished(t *testing.T) {
+	if _, err := exec.LookPath("whisper-cli"); err == nil {
+		t.Skip("whisper-cli is installed in this environment; the not-found-after-install path can't be exercised here")
+	}
+	m := settingsModel(t)
+
+	next, _ := m.Update(whisperCLIInstallFinishedMsg{err: errors.New("exit status 1")})
+	m = next.(model)
+	if !strings.Contains(m.err, "install failed") {
+		t.Fatalf("err flash = %q, want it to mention the install failure", m.err)
+	}
+	if m.useLocalWhisper {
+		t.Fatal("a failed install must not enable the setting")
+	}
+
+	next, _ = m.Update(whisperCLIInstallFinishedMsg{})
+	m = next.(model)
+	if !strings.Contains(m.err, "PATH") {
+		t.Fatalf("err flash = %q, want it to mention PATH (exit 0 but still not found)", m.err)
+	}
+	if m.useLocalWhisper {
+		t.Fatal("an exit-0-but-still-missing install must not enable the setting")
+	}
+}
+
 // TestScriptSegmentClosedSkipsNoKeyShortcutWhenLocalWhisperEnabled covers
 // handleSegmentClosed's routing decision: with local whisper on, there is
 // something to transcribe with even though m.aiKeys.OpenAI is empty, so
