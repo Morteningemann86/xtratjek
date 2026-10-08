@@ -578,6 +578,18 @@ func TestToggleUseLocalWhisperWithoutWhisperCLIOffersToInstallIt(t *testing.T) {
 	m.settingsCursor = settingUseLocalWhisper
 
 	m = sendKey(t, m, "enter")
+	if _, _, ok := whisperCLIInstallCommand(); !ok {
+		// No verified install command here (Windows, or Linux without apt):
+		// nothing is offered to run, the hint is shown and the setting
+		// stays off.
+		if m.mode == modeConfirm || m.useLocalWhisper {
+			t.Fatalf("with no install command: mode = %v, useLocalWhisper = %v; want no prompt and the setting off", m.mode, m.useLocalWhisper)
+		}
+		if !strings.Contains(m.err, whisperCLIInstallHint()) {
+			t.Fatalf("m.err = %q, want the install hint %q", m.err, whisperCLIInstallHint())
+		}
+		return
+	}
 	if m.mode != modeConfirm {
 		t.Fatalf("after enabling with no whisper-cli: mode = %v, want modeConfirm", m.mode)
 	}
